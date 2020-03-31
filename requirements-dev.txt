@@ -1,0 +1,4 @@
+mamba
+pandas==0.23.4
+pytz
+expects
