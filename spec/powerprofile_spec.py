@@ -193,7 +193,7 @@ with description('PowerProfile class'):
             self.powpro = PowerProfile()
             self.powpro.load(self.curve)
 
-        with context('by index'):
+        with context('by index operator [int:int]'):
             with context('correctly'):
                 with it('returns a dict when index'):
                     for v in range(len(self.curve) - 1):
@@ -218,7 +218,7 @@ with description('PowerProfile class'):
                 with it('raises IndexError (slice)'):
                     expect(lambda: self.powpro[1:50]).to(raise_error(IndexError))
 
-        with context('by timestamp'):
+        with context('by timestamp [datetime]'):
 
             with context('correctly'):
 
@@ -232,6 +232,18 @@ with description('PowerProfile class'):
                 with it('raises TypeError when naive datetime'):
                     dt = datetime(2020, 03, 11, 02, 00, 00)
                     expect(lambda: self.powpro[dt]).to(raise_error(TypeError))
+
+    with context('Aggregation operators'):
+
+        with context('total sum'):
+
+            with it('returns sum of magnitudes in curve'):
+
+                res = self.powpro.sum(['value'])
+
+                total_curve = sum([v['valor'] for v in self.curve])
+
+                expect(res['value']).to(equal(total_curve))
 
     with context('Real curves'):
         with before.all:
@@ -250,3 +262,27 @@ with description('PowerProfile class'):
                 powpro.load(curve, curve[0][datetime_field], curve[-1][datetime_field], datetime_field=datetime_field)
                 expect(powpro.check()).to(be_true)
 
+with description('PowerProfile Manipulation'):
+    with before.all:
+        self.data_path = './spec/data/'
+
+        with open(self.data_path + 'erp_curve.json') as fp:
+            self.erp_curve = json.load(fp, object_hook=datetime_parser)
+
+    with context('Self transformation functions'):
+        with context('Balance'):
+            with it('Performs and by hourly Balance between two magnitudes and stores in ac postfix columns'):
+                powpro = PowerProfile()
+                powpro.load(self.erp_curve['curve'], datetime_field='utc_datetime')
+
+                powpro.Balance('ae', 'ai')
+
+                expect(powpro.check()).to(be_true)
+                for i in range(powpro.hours):
+                    row = powpro[i]
+                    if row['ae'] >= row['ai']:
+                        row['ae_bal'] = row['ae'] - row['ai']
+                        row['ai_bal'] = 0.0
+                    else:
+                        row['ai_bal'] = row['ai'] - row['ae']
+                        row['ae_bal'] = 0.0
