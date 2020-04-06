@@ -90,3 +90,37 @@ class PowerProfile():
 
             res = self.curve.loc[self.curve['timestamp'] == item]
             return dict(res.iloc[0])
+
+    # Aggregations
+    def sum(self, magns):
+        """
+        Sum of every value in every row of the curve
+        :param magns: magnitudes
+        :return: dict a key for every magnitude in magns dict
+        """
+        totals = self.curve.sum()
+        res = {}
+        for magn in magns:
+            res[magn] = totals[magn]
+        return res
+
+    # Transformations
+    def Balance(self, magn1='ai', magn2='ae', sufix='bal'):
+        """
+        Balance two magnitude row by row. It perfoms the difference between both magnitudes and stores 0.0 in the
+        little one and the difference in the big one. The result is stored in two new fields with the same name of
+        selected magnitudes with selected postfix
+        :param magn1: magnitude 1. 'ae' as default
+        :param magn2: magnitude 2. 'ai' as default
+        :param sufix: postfix of new fields 'bal' as default
+        :return:
+        """
+        def balance(pos, neg):
+            res = pos - neg
+            if res > 0.0:
+                return res
+            else:
+                return 0.0
+
+        self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
+        self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)

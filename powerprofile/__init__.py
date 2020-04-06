@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
-import powerprofile
-import exceptions
+from powerprofile import *
+from exceptions import *
