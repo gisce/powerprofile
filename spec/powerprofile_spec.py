@@ -234,6 +234,15 @@ with description('PowerProfile class'):
                     expect(lambda: self.powpro[dt]).to(raise_error(TypeError))
 
     with context('Aggregation operators'):
+        with before.all:
+            self.curve = []
+            self.start = LOCAL_TZ.localize(datetime(2020, 03, 11, 01, 00, 00))
+            self.end = LOCAL_TZ.localize(datetime(2020, 03, 12, 00, 00, 00))
+            for hours in range(0, 24):
+                self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
+
+            self.powpro = PowerProfile()
+            self.powpro.load(self.curve)
 
         with context('total sum'):
 
@@ -241,7 +250,7 @@ with description('PowerProfile class'):
 
                 res = self.powpro.sum(['value'])
 
-                total_curve = sum([v['valor'] for v in self.curve])
+                total_curve = sum([v['value'] for v in self.curve])
 
                 expect(res['value']).to(equal(total_curve))
 
@@ -260,7 +269,11 @@ with description('PowerProfile class'):
                 datetime_field = 'utc_datetime'
                 powpro = PowerProfile()
                 powpro.load(curve, curve[0][datetime_field], curve[-1][datetime_field], datetime_field=datetime_field)
+                totals = powpro.sum(['ae', 'ai'])
+
                 expect(powpro.check()).to(be_true)
+                expect(totals['ai']).to(be_above(0))
+                expect(totals['ae']).to(be_above(0))
 
 with description('PowerProfile Manipulation'):
     with before.all:
