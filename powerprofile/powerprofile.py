@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 from datetime import datetime
 from pytz import timezone
 import pandas as pd
-from exceptions import *
+from .exceptions import *
 
 TIMEZONE = timezone('Europe/Madrid')
 

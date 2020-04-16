@@ -69,8 +69,8 @@ with description('PowerProfile class'):
         with context('correctly'):
             with before.all:
                 self.curve = []
-                self.start = LOCAL_TZ.localize(datetime(2020, 03, 11, 01, 00, 00))
-                self.end = LOCAL_TZ.localize(datetime(2020, 03, 12, 00, 00, 00))
+                self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+                self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
                 for hours in range(0, 24):
                     self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
                 self.powpro = PowerProfile()
@@ -112,8 +112,8 @@ with description('PowerProfile class'):
     with context('check curve'):
         with before.all:
             self.curve = []
-            self.start = LOCAL_TZ.localize(datetime(2020, 03, 11, 01, 00, 00))
-            self.end = LOCAL_TZ.localize(datetime(2020, 03, 12, 00, 00, 00))
+            self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+            self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
             for hours in range(0, 24):
                 self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
 
@@ -185,8 +185,8 @@ with description('PowerProfile class'):
     with context('accessing data'):
         with before.all:
             self.curve = []
-            self.start = LOCAL_TZ.localize(datetime(2020, 03, 11, 01, 00, 00))
-            self.end = LOCAL_TZ.localize(datetime(2020, 03, 12, 00, 00, 00))
+            self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+            self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
             for hours in range(0, 24):
                 self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
 
@@ -230,14 +230,14 @@ with description('PowerProfile class'):
 
             with context('when bad datetime'):
                 with it('raises TypeError when naive datetime'):
-                    dt = datetime(2020, 03, 11, 02, 00, 00)
+                    dt = datetime(2020, 3, 11, 2, 0, 0)
                     expect(lambda: self.powpro[dt]).to(raise_error(TypeError))
 
     with context('Aggregation operators'):
         with before.all:
             self.curve = []
-            self.start = LOCAL_TZ.localize(datetime(2020, 03, 11, 01, 00, 00))
-            self.end = LOCAL_TZ.localize(datetime(2020, 03, 12, 00, 00, 00))
+            self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+            self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
             for hours in range(0, 24):
                 self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
 
