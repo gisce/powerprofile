@@ -4,8 +4,16 @@ from datetime import datetime
 from pytz import timezone
 import pandas as pd
 from .exceptions import *
+try:
+    # Python 2
+    from cStringIO import StringIO
+except ImportError:
+    # Python 3
+    from io import StringIO
+
 
 TIMEZONE = timezone('Europe/Madrid')
+
 
 class PowerProfile():
 
@@ -125,3 +133,19 @@ class PowerProfile():
 
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
         self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
+
+    # Dump data
+    def to_csv(self, cols=None, header=True):
+        """
+        Returns a ';' delimited csv string with curve content.
+        :param cols: Columns to add after timestamp. All ones by default
+        :param header: Adds column header roe or not. True by default
+        :return:
+        """
+        csvfile = StringIO()
+        if cols is not None:
+            cols = ['timestamp'] + cols
+        self.curve.to_csv(
+            csvfile, sep=';', columns=cols, index=False, date_format='%Y-%m-%d %H:%M:%S%z', header=header
+        )
+        return csvfile.getvalue()
