@@ -9,6 +9,14 @@ from pytz import timezone
 from copy import copy
 from powerprofile.exceptions import *
 import json
+try:
+    # Python 2
+    from cStringIO import StringIO
+except ImportError:
+    # Python 3
+    from io import StringIO
+import csv
+import pandas as pd
 
 LOCAL_TZ = timezone('Europe/Madrid')
 UTC_TZ = timezone('UTC')
@@ -39,6 +47,20 @@ def create_test_curve(start_date, end_date):
 
     return curve
 
+
+def read_csv(txt):
+    """
+    returns an list of list with csv ';' delimited content
+    :param txt: the csv ';' delimited format string
+    :return: a list or rows as list
+    """
+    f = StringIO(txt)
+    reader = csv.reader(f, delimiter=';')
+    csv_curve = []
+    for row in reader:
+        csv_curve.append(row)
+
+    return csv_curve
 
 
 with description('PowerProfile class'):
@@ -299,3 +321,64 @@ with description('PowerProfile Manipulation'):
                     else:
                         row['ai_bal'] = row['ai'] - row['ae']
                         row['ae_bal'] = 0.0
+
+with description('PowerProfile Dump'):
+    with before.all:
+        self.data_path = './spec/data/'
+
+        with open(self.data_path + 'erp_curve.json') as fp:
+            self.erp_curve = json.load(fp, object_hook=datetime_parser)
+
+        self.powpro = PowerProfile()
+        self.powpro.load(self.erp_curve['curve'], datetime_field='utc_datetime')
+
+    with context('to_csv'):
+        with it('returns a csv file full'):
+            fullcsv = self.powpro.to_csv()
+
+            dump = read_csv(fullcsv)
+
+            expect(len(dump)).to(equal(self.powpro.hours + 1))
+            expect(list(self.powpro.curve.columns)).to(equal(dump[0]))
+            header = dump[0]
+            for key in header:
+                for row in range(self.powpro.hours):
+                    csv_value = dump[row + 1][header.index(key)]
+                    powpro_value = self.powpro[row][key]
+                    if isinstance(powpro_value, pd.Timestamp):
+                        expect(csv_value).to(equal(powpro_value.strftime('%Y-%m-%d %H:%M:%S%z')))
+                    else:
+                        expect(csv_value).to(equal(str(powpro_value)))
+
+        with it('returns a csv file without header with param header=False'):
+            no_header_csv = self.powpro.to_csv(header=False)
+            dump = read_csv(no_header_csv)
+            header = list(self.powpro.curve.columns)
+
+            expect(len(dump)).to(equal(self.powpro.hours))
+            for key in header:
+                expect(dump[0]).to_not(contain(key))
+
+        with it('returns a csv file selected fields'):
+            partial_csv = self.powpro.to_csv(['ae', 'ai'])
+            dump = read_csv(partial_csv)
+            header = ['timestamp', 'ae', 'ai']
+            csv_header = dump[0]
+
+            expect(len(dump[0])).to(equal(len(header)))
+
+            for key in header:
+                expect(csv_header).to(contain(key))
+
+            excluded_columns = list(set(list(self.powpro.curve.columns)) - set(header))
+            for key in excluded_columns:
+                expect(csv_header).to_not(contain(key))
+
+            for key in header:
+                for row in range(self.powpro.hours):
+                    csv_value = dump[row + 1][header.index(key)]
+                    powpro_value = self.powpro[row][key]
+                    if isinstance(powpro_value, pd.Timestamp):
+                        expect(csv_value).to(equal(powpro_value.strftime('%Y-%m-%d %H:%M:%S%z')))
+                    else:
+                        expect(csv_value).to(equal(str(powpro_value)))
