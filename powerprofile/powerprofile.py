@@ -13,17 +13,19 @@ except ImportError:
 
 
 TIMEZONE = timezone('Europe/Madrid')
+UTC_TIMEZONE = timezone('UTC')
 
 
 class PowerProfile():
 
-    def __init__(self):
+    def __init__(self, datetime_field='timestamp'):
 
         self.start = None
         self.end = None
         self.curve = None
+        self.datetime_field = datetime_field
 
-    def load(self, data ,start=None, end=None, datetime_field='timestamp'):
+    def load(self, data, start=None, end=None, datetime_field=None):
         if not isinstance(data, (list, tuple)):
             raise TypeError("ERROR: [data] must be a list of dicts ordered by timestamp")
 
@@ -33,27 +35,33 @@ class PowerProfile():
         if end and not isinstance(end, datetime):
             raise TypeError("ERROR: [end] must be a localized datetime")
 
-        if data and not data[0].get(datetime_field, False):
+        if datetime_field is not None:
+            self.datetime_field = datetime_field
+
+        if data and not data[0].get(self.datetime_field, False):
             raise TypeError("ERROR: No timestamp field. Use datetime_field option to set curve datetime field")
 
         self.curve = pd.DataFrame(data)
 
-        if datetime_field != 'timestamp':
-            self.curve = self.curve.rename(columns={datetime_field: 'timestamp'})
-
         if start:
             self.start = start
         else:
-            self.start = self.curve['timestamp'].min()
+            self.start = self.curve[self.datetime_field].min()
 
         if end:
             self.end = end
         else:
-            self.end = self.curve['timestamp'].max()
+            self.end = self.curve[self.datetime_field].max()
+
+    def dump(self):
+
+        data = self.curve.to_dict(orient='records')
+
+        return data
 
     @property
     def hours(self):
-        return self.curve.count()['timestamp']
+        return self.curve.count()[self.datetime_field]
 
     def is_complete(self):
         ''' Checks completeness of curve '''
@@ -64,7 +72,7 @@ class PowerProfile():
 
     def has_duplicates(self):
         ''' Checks for duplicated hours'''
-        uniques = len(self.curve['timestamp'].unique())
+        uniques = len(self.curve[self.datetime_field].unique())
         if uniques != self.hours:
             return True
         return False
@@ -90,14 +98,14 @@ class PowerProfile():
             self.curve.iloc[item.stop]
             powpro = PowerProfile()
             powpro.curve = res
-            powpro.start = res.iloc[0]['timestamp']
-            powpro.end = res.iloc[-1]['timestamp']
+            powpro.start = res.iloc[0][self.datetime_field]
+            powpro.end = res.iloc[-1][self.datetime_field]
             return powpro
         elif isinstance(item, datetime):
             if not datetime.tzinfo:
                 raise TypeError('Datetime must be a localized datetime')
 
-            res = self.curve.loc[self.curve['timestamp'] == item]
+            res = self.curve.loc[self.curve[self.datetime_field] == item]
             return dict(res.iloc[0])
 
     # Aggregations
@@ -144,7 +152,7 @@ class PowerProfile():
         """
         csvfile = StringIO()
         if cols is not None:
-            cols = ['timestamp'] + cols
+            cols = [self.datetime_field] + cols
         self.curve.to_csv(
             csvfile, sep=';', columns=cols, index=False, date_format='%Y-%m-%d %H:%M:%S%z', header=header
         )

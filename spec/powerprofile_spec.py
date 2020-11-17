@@ -113,7 +113,7 @@ with description('PowerProfile class'):
                 self.powpro.load(self.curve, start=self.start, end=self.end)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
 
-            with it('with datetime_field field'):
+            with it('with datetime_field field in load'):
 
                 curve_name = []
                 for row in self.curve:
@@ -127,8 +127,54 @@ with description('PowerProfile class'):
                 expect(lambda: powpro.load(curve_name)).to(raise_error(TypeError))
 
                 expect(lambda: powpro.load(curve_name, datetime_field='datetime')).to_not(raise_error(TypeError))
-                expect(powpro[0]).not_to(have_key('datetime'))
-                expect(powpro[0]).to(have_key('timestamp'))
+                expect(powpro[0]).to(have_key('datetime'))
+
+            with it('with datetime_field field in constructor'):
+
+                curve_name = []
+                for row in self.curve:
+                    new_row = copy(row)
+                    new_row['datetime'] = new_row['timestamp']
+                    new_row.pop('timestamp')
+                    curve_name.append(new_row)
+
+                powpro = PowerProfile(datetime_field='datetime')
+
+                expect(lambda: powpro.load(curve_name)).to_not(raise_error(TypeError))
+                expect(powpro[0]).to(have_key('datetime'))
+
+    with context('dump function'):
+        with before.all:
+            self.curve = []
+            self.erp_curve = []
+            self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+            self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
+            for hours in range(0, 24):
+                self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
+                self.erp_curve.append(
+                    {
+                        'local_datetime': self.start + timedelta(hours=hours),
+                        'utc_datetime': (self.start + timedelta(hours=hours)).astimezone(UTC_TZ),
+                        'value': 100 + hours,
+                        'valid': bool(hours % 2),
+                        'period': 'P' + str(hours % 3),
+                    }
+                )
+
+        with context('performs complet curve -> load -> dump -> curve circuit '):
+
+            with it('works with simple format'):
+                powpro = PowerProfile()
+                powpro.load(self.curve)
+                curve = powpro.dump()
+                expect(curve).to(equal(self.curve))
+
+            with it('works with ERP curve API'):
+                powpro = PowerProfile(datetime_field='utc_datetime')
+                powpro.load(self.erp_curve)
+                erp_curve = powpro.dump()
+
+                expect(erp_curve).to(equal(self.erp_curve))
 
 
     with context('check curve'):
@@ -289,13 +335,16 @@ with description('PowerProfile class'):
 
                 curve = erp_curve['curve']
                 datetime_field = 'utc_datetime'
-                powpro = PowerProfile()
-                powpro.load(curve, curve[0][datetime_field], curve[-1][datetime_field], datetime_field=datetime_field)
+                powpro = PowerProfile(datetime_field)
+                powpro.load(curve, curve[0][datetime_field], curve[-1][datetime_field])
                 totals = powpro.sum(['ae', 'ai'])
 
                 expect(powpro.check()).to(be_true)
                 expect(totals['ai']).to(be_above(0))
                 expect(totals['ae']).to(be_above(0))
+
+                dumped_curve = powpro.dump()
+                expect(dumped_curve).to(equal(curve))
 
 with description('PowerProfile Manipulation'):
     with before.all:
@@ -362,7 +411,7 @@ with description('PowerProfile Dump'):
         with it('returns a csv file selected fields'):
             partial_csv = self.powpro.to_csv(['ae', 'ai'])
             dump = read_csv(partial_csv)
-            header = ['timestamp', 'ae', 'ai']
+            header = ['utc_datetime', 'ae', 'ai']
             csv_header = dump[0]
 
             expect(len(dump[0])).to(equal(len(header)))
