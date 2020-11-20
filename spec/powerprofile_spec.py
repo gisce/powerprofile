@@ -371,6 +371,102 @@ with description('PowerProfile Manipulation'):
                         row['ai_bal'] = row['ai'] - row['ae']
                         row['ae_bal'] = 0.0
 
+with description('PowerProfile Operators'):
+    with before.all:
+        self.data_path = './spec/data/'
+
+        with open(self.data_path + 'erp_curve.json') as fp:
+            self.erp_curve = json.load(fp, object_hook=datetime_parser)
+
+    with description('Unary Operator'):
+        with context('Copy'):
+            with it('returns an exact copy'):
+                curve_a = PowerProfile('utc_datetime')
+                curve_a.load(self.erp_curve['curve'])
+
+                curve_b = curve_a.copy()
+
+                expect(lambda: curve_b.similar(curve_b)).not_to(raise_error)
+
+    with description('Binary Operator'):
+
+        with context('Extend'):
+            with it('Raises Type error if not powerprofile param'):
+                curve_a = PowerProfile('utc_datetime')
+                curve_a.load(self.erp_curve['curve'])
+
+                expect(
+                    lambda: curve_a.extend(self.erp_curve['curve'])
+                ).to(raise_error(TypeError, 'ERROR extend: Right Operand must be a PowerProfile'))
+
+            with context('Tests profiles and'):
+                with before.all:
+                    self.curve_a = PowerProfile('utc_datetime')
+                    self.curve_a.load(self.erp_curve['curve'])
+
+                with it('raises a TypeError with different start date'):
+                    curve_b = PowerProfile('utc_datetime')
+                    curve_b.load(self.erp_curve['curve'][2:])
+
+                    expect(lambda: self.curve_a.extend(curve_b)
+                    ).to(raise_error(TypeError, match(r'start')))
+
+                with it('raises a TypeError with different end date'):
+                    curve_b = PowerProfile('utc_datetime')
+                    curve_b.load(self.erp_curve['curve'][:-2])
+
+                    expect(lambda: self.curve_a.extend(curve_b)
+                    ).to(raise_error(TypeError, match(r'end')))
+
+                with it('raises a TypeError with different datetime_field'):
+                    curve_b = PowerProfile('local_datetime')
+                    curve_b.load(self.erp_curve['curve'])
+
+                    expect(lambda: self.curve_a.extend(curve_b)
+                    ).to(raise_error(TypeError, match(r'datetime_field')))
+
+                with it('raises a TypeError with different length'):
+                    curve_b = PowerProfile('utc_datetime')
+                    curve_b.load([self.erp_curve['curve'][0], self.erp_curve['curve'][-1]])
+
+                    expect(lambda: self.curve_a.extend(curve_b)
+                    ).to(raise_error(TypeError, match(r'hours')))
+
+            with it('returns a new power profile with both original columns'):
+                curve_a = PowerProfile('utc_datetime')
+                curve_a.load(self.erp_curve['curve'])
+
+                curve_b = PowerProfile('utc_datetime')
+                curve_b.load(self.erp_curve['curve'])
+
+                curve_c = curve_a.extend(curve_b)
+
+                extend_curve = curve_c.dump()
+
+                expect(curve_a.hours).to(equal(curve_c.hours))
+                expect(curve_b.hours).to(equal(curve_c.hours))
+                expect(curve_a.start).to(equal(curve_c.start))
+                expect(curve_a.end).to(equal(curve_c.end))
+
+                first_register = extend_curve[0]
+                last_register = extend_curve[-1]
+
+                expect(first_register['utc_datetime']).to(equal(self.erp_curve['curve'][0]['utc_datetime']))
+                expect(last_register['utc_datetime']).to(equal(self.erp_curve['curve'][-1]['utc_datetime']))
+                expect(first_register).to(have_key('utc_datetime'))
+                expect(first_register).to(have_key('local_datetime_left'))
+                expect(first_register).to(have_key('local_datetime_right'))
+                expect(first_register).to(have_key('ai_fact_left'))
+                expect(first_register).to(have_key('ai_fact_right'))
+                expect(first_register).to(have_key('ae_fact_left'))
+                expect(first_register).to(have_key('ae_fact_right'))
+                expect(first_register).to(have_key('ai_left'))
+                expect(first_register).to(have_key('ai_right'))
+                expect(first_register).to(have_key('ae_left'))
+                expect(first_register).to(have_key('ae_right'))
+
+
+
 with description('PowerProfile Dump'):
     with before.all:
         self.data_path = './spec/data/'
