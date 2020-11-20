@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from datetime import datetime
 from pytz import timezone
 import pandas as pd
+import copy
 from .exceptions import *
 try:
     # Python 2
@@ -141,6 +142,53 @@ class PowerProfile():
 
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
         self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
+
+    # Operators
+    # Binary
+    def similar(self, right):
+        """Ensures two PowerProfiles are "compatible", that is:
+            * same start date
+            * same end date
+            * same datetime_field
+            * same length
+
+        :param right:
+        :return: True if ok , raises TypeError instead
+        """
+        for field in ['start', 'end', 'datetime_field', 'hours']:
+            if getattr(right, field) != getattr(self, field):
+                raise TypeError('ERROR: right "{}" attribute {} is not equal: {}'.format(
+                    field, getattr(right, field), getattr(self, field)))
+
+        return True
+
+    def extend(self, right):
+        ''' Add right curve columns to current curve and return a new curve. It adds _left and _right suffix
+        on every column depending on origin'''
+        if not isinstance(right, PowerProfile):
+            raise TypeError('ERROR extend: Right Operand must be a PowerProfile')
+
+        self.similar(right)
+
+        new = self.copy()
+        new.curve = self.curve.merge(
+            right.curve, how='inner', on=self.datetime_field, suffixes=('_left', '_right'), validate='one_to_one'
+        )
+
+        return new
+
+    # Unary
+    def copy(self):
+        """
+        Returns an identical copy of the same profile
+        :return: PowerProfile Object
+        """
+        new = PowerProfile(self.datetime_field)
+        new.start = self.start
+        new.end = self.end
+        new.curve = copy.copy(self.curve)
+
+        return new
 
     # Dump data
     def to_csv(self, cols=None, header=True):
