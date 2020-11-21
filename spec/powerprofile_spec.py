@@ -9,6 +9,7 @@ from pytz import timezone
 from copy import copy
 from powerprofile.exceptions import *
 import json
+import random
 try:
     # Python 2
     from cStringIO import StringIO
@@ -43,6 +44,8 @@ def create_test_curve(start_date, end_date):
     curve = []
     cur_date = start_date
     while cur_date <= end_date:
+        value = random.uniform(1.0, 200.0)
+        curve.append({'utc_datetime': cur_date, 'value': value})
         cur_date += relativedelta(hours=1)
 
     return curve
@@ -379,14 +382,48 @@ with description('PowerProfile Operators'):
             self.erp_curve = json.load(fp, object_hook=datetime_parser)
 
     with description('Unary Operator'):
-        with context('Copy'):
-            with it('returns an exact copy'):
-                curve_a = PowerProfile('utc_datetime')
-                curve_a.load(self.erp_curve['curve'])
+        with before.all:
+            self.curve_a = PowerProfile('utc_datetime')
+            self.curve_a.load(self.erp_curve['curve'])
 
-                curve_b = curve_a.copy()
+        with context('copy'):
+            with it('returns an exact copy'):
+                curve_b = self.curve_a.copy()
 
                 expect(lambda: curve_b.similar(curve_b)).not_to(raise_error)
+
+        with context('extract'):
+            with it('returns a new profile with only selected columns in a list'):
+                curve_b = self.curve_a.extract(['ai_fact'])
+
+                original_cols = list(self.curve_a.dump()[0].keys())
+                expected_cols = ['utc_datetime', 'ai_fact']
+
+                first_column = curve_b.dump()[0]
+                expect(first_column).to(have_keys(*expected_cols))
+                for col in list(set(original_cols) - set(expected_cols)):
+                    expect(first_column).not_to(have_key(col))
+
+            with it('raise a Value exception when field in list not in profile'):
+                expect(lambda: self.curve_a.extract(['bad_field'])).to(
+                    raise_error(ValueError, 'ERROR: Selected column "bad_field" does not exists in the PowerProfile')
+                )
+            with it('raise a Value exception when field in dict not in profile'):
+                expect(lambda: self.curve_a.extract({'bad_field': 'value'})).to(
+                    raise_error(ValueError, 'ERROR: Selected column "bad_field" does not exists in the PowerProfile')
+                )
+
+            with it('returns a new profile with selected columns in a dict and renamed'):
+                curve_b = self.curve_a.extract({'ai_fact': 'value'})
+
+                first_column = curve_b.dump()[0]
+                expect(first_column).to(have_keys(*['utc_datetime', 'value']))
+                expect(first_column).not_to(have_key('ai_fact'))
+
+            with it('raise a Value exception when new field is not unique'):
+                expect(lambda: self.curve_a.extract({'ai': 'value', 'ai_fact': 'value'})).to(
+                    raise_error(ValueError, 'ERROR: Selected new name column "value" must be unique in the PowerProfile')
+                )
 
     with description('Binary Operator'):
 
@@ -432,7 +469,7 @@ with description('PowerProfile Operators'):
                     expect(lambda: self.curve_a.extend(curve_b)
                     ).to(raise_error(TypeError, match(r'hours')))
 
-            with it('returns a new power profile with both original columns'):
+            with it('returns a new power profile with both original columns when identical'):
                 curve_a = PowerProfile('utc_datetime')
                 curve_a.load(self.erp_curve['curve'])
 
@@ -441,31 +478,54 @@ with description('PowerProfile Operators'):
 
                 curve_c = curve_a.extend(curve_b)
 
+                expect(curve_a.hours).to(equal(curve_c.hours))
+                expect(curve_b.hours).to(equal(curve_c.hours))
+                expect(curve_a.start).to(equal(curve_c.start))
+                expect(curve_a.end).to(equal(curve_c.end))
+
                 extend_curve = curve_c.dump()
+                first_register = extend_curve[0]
+                last_register = extend_curve[-1]
+
+                a_cols = curve_a.dump()[0].keys()
+                b_cols = curve_b.dump()[0].keys()
+                dfield = curve_a.datetime_field
+                expected_cols = (
+                        [dfield] + [a + '_left' for a in a_cols if a != dfield]
+                        + [b + '_right' for b in b_cols if b != dfield]
+                )
+
+                for field in expected_cols:
+                    expect(first_register.keys()).to(contain(field))
+
+            with it('returns a new power profile with both original columns when no name col·lision'):
+                curve_a = PowerProfile('utc_datetime')
+                curve_a.load(self.erp_curve['curve'])
+
+                curve_b = PowerProfile('utc_datetime')
+                curve_b.load(create_test_curve(curve_a.start, curve_a.end))
+
+                curve_c = curve_a.extend(curve_b)
 
                 expect(curve_a.hours).to(equal(curve_c.hours))
                 expect(curve_b.hours).to(equal(curve_c.hours))
                 expect(curve_a.start).to(equal(curve_c.start))
                 expect(curve_a.end).to(equal(curve_c.end))
 
+                extend_curve = curve_c.dump()
                 first_register = extend_curve[0]
                 last_register = extend_curve[-1]
 
-                expect(first_register['utc_datetime']).to(equal(self.erp_curve['curve'][0]['utc_datetime']))
-                expect(last_register['utc_datetime']).to(equal(self.erp_curve['curve'][-1]['utc_datetime']))
-                expect(first_register).to(have_key('utc_datetime'))
-                expect(first_register).to(have_key('local_datetime_left'))
-                expect(first_register).to(have_key('local_datetime_right'))
-                expect(first_register).to(have_key('ai_fact_left'))
-                expect(first_register).to(have_key('ai_fact_right'))
-                expect(first_register).to(have_key('ae_fact_left'))
-                expect(first_register).to(have_key('ae_fact_right'))
-                expect(first_register).to(have_key('ai_left'))
-                expect(first_register).to(have_key('ai_right'))
-                expect(first_register).to(have_key('ae_left'))
-                expect(first_register).to(have_key('ae_right'))
+                a_cols = curve_a.dump()[0].keys()  # ae, ai, ae_fact, ai_fact, ....
+                b_cols = curve_b.dump()[0].keys()  # value
+                dfield = curve_a.datetime_field
+                expected_cols = (
+                        [dfield] + [a for a in a_cols if a != dfield]
+                        + [b for b in b_cols if b != dfield]
+                )
 
-
+                for field in expected_cols:
+                    expect(first_register.keys()).to(contain(field))
 
 with description('PowerProfile Dump'):
     with before.all:
