@@ -190,6 +190,45 @@ class PowerProfile():
 
         return new
 
+    def extract(self, cols):
+        """
+        Returns a new profile with only selected columns
+        When cols is a list, the new profile contains only datetime field and selected columns in the list
+            ['col1', 'col2']
+        When cols is a dict, also renames selected columns (key) to the new value:
+            {'orig_col1': 'new_col_name1', 'orig_col2': 'new_col_name2}
+        Raise a Value Error when selected column is not in the current profile
+        :return: The new Profile
+        """
+        new = self.copy()
+        if isinstance(cols, dict):
+            selected_cols = list(cols.keys())
+        else:
+            selected_cols = cols
+
+        current_cols = self.curve.head()
+        # test cols
+        for col in selected_cols:
+            if col not in current_cols:
+                raise ValueError('ERROR: Selected column "{}" does not exists in the PowerProfile'.format(col))
+
+        final_cols = [self.datetime_field] + selected_cols
+        for col in current_cols:
+            if col not in final_cols:
+                del new.curve[col]
+
+        # field translation
+        if isinstance(cols, dict):
+            # test new name exists
+            final_trans_cols = list(cols.values())
+            for col in final_trans_cols:
+                if final_trans_cols.count(col) > 1:
+                    raise ValueError('ERROR: Selected new name column "{}" must be unique in the PowerProfile'.format(col))
+
+            new.curve.rename(columns=cols, inplace=True)
+
+        return new
+
     # Dump data
     def to_csv(self, cols=None, header=True):
         """
