@@ -17,16 +17,21 @@ TIMEZONE = timezone('Europe/Madrid')
 UTC_TIMEZONE = timezone('UTC')
 
 
+DEFAULT_DATA_FIELDS_NO_FACT = ['ae', 'ai', 'r1', 'r2', 'r3', 'r4']
+DEFAULT_DATA_FIELDS = DEFAULT_DATA_FIELDS_NO_FACT + [f + '_fact' for f in DEFAULT_DATA_FIELDS_NO_FACT] + ['value']
+
+
 class PowerProfile():
 
-    def __init__(self, datetime_field='timestamp'):
+    def __init__(self, datetime_field='timestamp', data_fields=DEFAULT_DATA_FIELDS):
 
         self.start = None
         self.end = None
         self.curve = None
         self.datetime_field = datetime_field
+        self.data_fields = data_fields
 
-    def load(self, data, start=None, end=None, datetime_field=None):
+    def load(self, data, start=None, end=None, datetime_field=None, data_fields=None):
         if not isinstance(data, (list, tuple)):
             raise TypeError("ERROR: [data] must be a list of dicts ordered by timestamp")
 
@@ -53,6 +58,16 @@ class PowerProfile():
             self.end = end
         else:
             self.end = self.curve[self.datetime_field].max()
+
+        if data_fields is not None:
+            self.data_fields = data_fields
+        else:
+            auto_data_fields = []
+            loaded_data_fields = data[0].keys()
+            for field in DEFAULT_DATA_FIELDS:
+                if field in loaded_data_fields and field in self.data_fields:
+                    auto_data_fields.append(field)
+            self.data_fields = auto_data_fields
 
     def dump(self):
 
@@ -145,7 +160,7 @@ class PowerProfile():
 
     # Operators
     # Binary
-    def similar(self, right):
+    def similar(self, right, data_fields=False):
         """Ensures two PowerProfiles are "compatible", that is:
             * same start date
             * same end date
@@ -153,14 +168,80 @@ class PowerProfile():
             * same length
 
         :param right:
-        :return: True if ok , raises TypeError instead
+        :param data_fields: Test also same data_fields if True
+        :return: True if ok , raises PowerProfileIncompatible instead
         """
         for field in ['start', 'end', 'datetime_field', 'hours']:
             if getattr(right, field) != getattr(self, field):
-                raise TypeError('ERROR: right "{}" attribute {} is not equal: {}'.format(
+                raise PowerProfileIncompatible('ERROR: right "{}" attribute {} is not equal: {}'.format(
                     field, getattr(right, field), getattr(self, field)))
 
+        if data_fields:
+            if len(self.data_fields) != len(right.data_fields):
+                raise PowerProfileIncompatible('ERROR: right data fields "{}" are not the same: {}'.format(
+                    self.data_fields, right.data_fields)
+                )
+            for field in self.data_fields:
+                if field not in right.data_fields:
+                    raise PowerProfileIncompatible('ERROR: right profile does not contains field "{}": {}'.format(
+                        field, right.data_fields)
+                    )
         return True
+
+    def __operate(self, right, op='mul'):
+        new = self.copy()
+        scalar = False
+        if isinstance(right, (int, float)):
+            # scalar
+            scalar = True
+        else:
+            self.similar(right, data_fields=True)
+
+        if op in ['mul', 'rmul']:
+            for field in self.data_fields:
+                if scalar:
+                    new.curve[field] = self.curve[field] * right
+                else:
+                    new.curve[field] = self.curve[field] * right.curve[field]
+        elif op in ['add', 'radd']:
+            for field in self.data_fields:
+                if scalar:
+                    new.curve[field] = self.curve[field] + right
+                else:
+                    new.curve[field] = self.curve[field] + right.curve[field]
+
+        elif op in ['sub']:
+            for field in self.data_fields:
+                if scalar:
+                    new.curve[field] = self.curve[field] - right
+                else:
+                    new.curve[field] = self.curve[field] - right.curve[field]
+        elif op in ['rsub']:
+            for field in self.data_fields:
+                if scalar:
+                    new.curve[field] = - (self.curve[field] - right)
+                else:
+                    new.curve[field] = right.curve[field] - self.curve[field]
+
+        return new
+
+    def __mul__(self, other, op='mul'):
+        return self.__operate(other, op)
+
+    def __rmul__(self, other, op='rmul'):
+        return self.__operate(other, op)
+
+    def __add__(self, other, op='add'):
+        return self.__operate(other, op)
+
+    def __radd__(self, other, op='radd'):
+        return self.__operate(other, op)
+
+    def __sub__(self, other, op='sub'):
+        return self.__operate(other, op)
+
+    def __rsub__(self, other, op='rsub'):
+        return self.__operate(other, op)
 
     def extend(self, right):
         ''' Add right curve columns to current curve and return a new curve. It adds _left and _right suffix

@@ -7,3 +7,11 @@ class PowerProfileIncompleteCurve(ValueError):
 
 class PowerProfileDuplicatedTimes(ValueError):
     pass
+
+
+class PowerProfileNotImplemented(NotImplementedError):
+    pass
+
+
+class PowerProfileIncompatible(ValueError):
+    pass
