@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from expects.testing import failure
 from expects import *
-from powerprofile.powerprofile import PowerProfile
+from powerprofile.powerprofile import PowerProfile, DEFAULT_DATA_FIELDS
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse as parse_datetime
@@ -103,18 +103,22 @@ with description('PowerProfile class'):
             with it('without dates'):
                 self.powpro.load(self.curve)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
+                expect(self.powpro.data_fields).to(equal(['value']))
 
             with it('with start date'):
                 self.powpro.load(self.curve, start=self.start)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
+                expect(self.powpro.data_fields).to(equal(['value']))
 
             with it('with end date'):
                 self.powpro.load(self.curve, end=self.end)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
+                expect(self.powpro.data_fields).to(equal(['value']))
 
             with it('with start and end date'):
                 self.powpro.load(self.curve, start=self.start, end=self.end)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
+                expect(self.powpro.data_fields).to(equal(['value']))
 
             with it('with datetime_field field in load'):
 
@@ -145,6 +149,16 @@ with description('PowerProfile class'):
 
                 expect(lambda: powpro.load(curve_name)).to_not(raise_error(TypeError))
                 expect(powpro[0]).to(have_key('datetime'))
+
+            with it('with data_fields field in load'):
+
+                powpro = PowerProfile()
+
+                powpro.load(self.curve, data_fields=['value'])
+                expect(powpro.data_fields).to(equal(['value']))
+
+                expect(lambda: powpro.load(curve_name, data_fields=['value'])).to_not(raise_error(TypeError))
+                expect(powpro[0]).to(have_key('value'))
 
     with context('dump function'):
         with before.all:
@@ -441,33 +455,34 @@ with description('PowerProfile Operators'):
                     self.curve_a = PowerProfile('utc_datetime')
                     self.curve_a.load(self.erp_curve['curve'])
 
-                with it('raises a TypeError with different start date'):
+                with it('raises a PowerProfileIncompatible with different start date'):
                     curve_b = PowerProfile('utc_datetime')
                     curve_b.load(self.erp_curve['curve'][2:])
 
                     expect(lambda: self.curve_a.extend(curve_b)
-                    ).to(raise_error(TypeError, match(r'start')))
+                    ).to(raise_error(PowerProfileIncompatible, match(r'start')))
 
-                with it('raises a TypeError with different end date'):
+                with it('raises a PowerProfileIncompatible with different end date'):
                     curve_b = PowerProfile('utc_datetime')
                     curve_b.load(self.erp_curve['curve'][:-2])
 
                     expect(lambda: self.curve_a.extend(curve_b)
-                    ).to(raise_error(TypeError, match(r'end')))
+                    ).to(raise_error(PowerProfileIncompatible, match(r'end')))
 
-                with it('raises a TypeError with different datetime_field'):
+                with it('raises a PowerProfileIncompatible with different datetime_field'):
                     curve_b = PowerProfile('local_datetime')
                     curve_b.load(self.erp_curve['curve'])
 
                     expect(lambda: self.curve_a.extend(curve_b)
-                    ).to(raise_error(TypeError, match(r'datetime_field')))
+                    ).to(raise_error(PowerProfileIncompatible, match(r'datetime_field')))
 
-                with it('raises a TypeError with different length'):
+                with it('raises a PowerProfileIncompatible with different length'):
                     curve_b = PowerProfile('utc_datetime')
                     curve_b.load([self.erp_curve['curve'][0], self.erp_curve['curve'][-1]])
 
                     expect(lambda: self.curve_a.extend(curve_b)
-                    ).to(raise_error(TypeError, match(r'hours')))
+                    ).to(raise_error(PowerProfileIncompatible, match(r'hours')))
+
 
             with it('returns a new power profile with both original columns when identical'):
                 curve_a = PowerProfile('utc_datetime')
@@ -526,6 +541,375 @@ with description('PowerProfile Operators'):
 
                 for field in expected_cols:
                     expect(first_register.keys()).to(contain(field))
+
+        with context('Arithmetic'):
+            with before.all:
+                self.data_path = './spec/data/'
+
+                with open(self.data_path + 'erp_curve.json') as fp:
+                    self.erp_curve = json.load(fp, object_hook=datetime_parser)
+
+            with context('Scalar Multiply'):
+
+                with it('multiplies every default value in a powerprofile by scalar integer value'):
+                    curve_a = PowerProfile('utc_datetime')
+                    curve_a.load(self.erp_curve['curve'])
+
+                    new = curve_a * 2
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    powpro_fields = curve_a.dump()[0].keys()
+                    for field in powpro_fields:
+                        if field in DEFAULT_DATA_FIELDS:
+                            for row in new:
+                                new_value = row[field]
+                                old_value = curve_a[row['utc_datetime']][field]
+                                expect(new_value).to(equal(old_value * 2))
+
+                with it('multiplies one column in a powerprofile by scalar float value'):
+                    curve_a = PowerProfile('utc_datetime', data_fields=['ai'])
+                    curve_a.load(self.erp_curve['curve'])
+
+                    new = curve_a * 1.5
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    powpro_fields = curve_a.dump()[0].keys()
+                    for field in powpro_fields:
+                        if field in DEFAULT_DATA_FIELDS:
+                            for row in new:
+                                new_value = row[field]
+                                old_value = curve_a[row['utc_datetime']][field]
+                                if field == 'ai':
+                                    expect(new_value).to(equal(old_value * 1.5))
+                                else:
+                                    expect(new_value).to(equal(old_value))
+
+            with context('Profile Multiply'):
+                with before.all:
+                    self.curve_a = PowerProfile('utc_datetime')
+                    self.curve_a.load(self.erp_curve['curve'])
+
+                    # only test data field
+                    self.curve_b = PowerProfile('utc_datetime')
+                    self.curve_b.load(create_test_curve(self.curve_a.start, self.curve_a.end))
+
+                    self.curve_c = PowerProfile('utc_datetime')
+                    self.curve_c.load(create_test_curve(self.curve_a.start, self.curve_a.end))
+
+                with it("raise a ValueError if p1 and p2 hasn't got same data fields"):
+
+                    expect(lambda: self.curve_a + self.curve_b).to(raise_error(PowerProfileIncompatible))
+
+                with it('multiplies value column of two profiles when p1 * p2'):
+                    left = self.curve_b
+                    right = self.curve_c
+
+                    new = left * right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value * right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+                with it('multiplies every data field column of two profiles when p1 * p2'):
+                    left = self.curve_a
+                    right = self.curve_a
+                    new = left * right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value * right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+                with it('multiplies every default data field column of two profiles when p1 * p2'):
+                    left = self.curve_a
+                    right = self.curve_a
+                    new = left * right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value * right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+            with context('Scalar Adding'):
+
+                with it('adds a scalar float value to every default field in a powerprofile'):
+                    curve_a = PowerProfile('utc_datetime')
+                    curve_a.load(self.erp_curve['curve'])
+
+                    new = curve_a + 2.5
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    powpro_fields = curve_a.dump()[0].keys()
+                    for field in powpro_fields:
+                        if field in DEFAULT_DATA_FIELDS:
+                            for row in new:
+                                new_value = row[field]
+                                old_value = curve_a[row['utc_datetime']][field]
+                                expect(new_value).to(equal(old_value + 2.5))
+
+                with it('adds a scalar integer value to one field in a powerprofile'):
+                    curve_a = PowerProfile('utc_datetime', data_fields=['ai'])
+                    curve_a.load(self.erp_curve['curve'])
+
+                    new = curve_a + 3
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    powpro_fields = curve_a.dump()[0].keys()
+                    for field in powpro_fields:
+                        if field in DEFAULT_DATA_FIELDS:
+                            for row in new:
+                                new_value = row[field]
+                                old_value = curve_a[row['utc_datetime']][field]
+                                if field == 'ai':
+                                    expect(new_value).to(equal(old_value + 3))
+                                else:
+                                    expect(new_value).to(equal(old_value))
+
+            with context('Profile Adding'):
+                with before.all:
+                    self.curve_a = PowerProfile('utc_datetime')
+                    self.curve_a.load(self.erp_curve['curve'])
+
+                    # only test data field
+                    self.curve_b = PowerProfile('utc_datetime')
+                    self.curve_b.load(create_test_curve(self.curve_a.start, self.curve_a.end))
+
+                    self.curve_c = PowerProfile('utc_datetime')
+                    self.curve_c.load(create_test_curve(self.curve_a.start, self.curve_a.end))
+
+                with it("raise a ValueError if p1 and p2 hasn't got same data fields"):
+
+                    expect(lambda: self.curve_a + self.curve_b).to(raise_error(PowerProfileIncompatible))
+
+                with it('adds value column of two profiles when p1 + p2'):
+                    left = self.curve_b
+                    right = self.curve_c
+
+                    new = left + right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value + right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+                with it('adds every data field column of two profiles when p1 + p2'):
+                    left = self.curve_a
+                    right = self.curve_a
+                    new = left + right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value + right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+                with it('adds every default data field column of two profiles when p1 + p2'):
+                    left = self.curve_a
+                    right = self.curve_a
+                    new = left + right
+
+                    new = left + right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value + right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+            with context('Scalar Substract'):
+
+                with it('substacts a scalar float value to every default field in a powerprofile'):
+                    curve_a = PowerProfile('utc_datetime')
+                    curve_a.load(self.erp_curve['curve'])
+
+                    new = curve_a - 0.5
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    powpro_fields = curve_a.dump()[0].keys()
+                    for field in powpro_fields:
+                        if field in DEFAULT_DATA_FIELDS:
+                            for row in new:
+                                new_value = row[field]
+                                old_value = curve_a[row['utc_datetime']][field]
+                                expect(new_value).to(equal(old_value - 0.5))
+
+                with it('substracts a scalar integer value to one field in a powerprofile'):
+                    curve_a = PowerProfile('utc_datetime', data_fields=['ai'])
+                    curve_a.load(self.erp_curve['curve'])
+
+                    new = curve_a - 3
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    powpro_fields = curve_a.dump()[0].keys()
+                    for field in powpro_fields:
+                        if field in DEFAULT_DATA_FIELDS:
+                            for row in new:
+                                new_value = row[field]
+                                old_value = curve_a[row['utc_datetime']][field]
+                                if field == 'ai':
+                                    expect(new_value).to(equal(old_value - 3))
+                                else:
+                                    expect(new_value).to(equal(old_value))
+
+            with context('Profile Substracting'):
+                with before.all:
+                    self.curve_a = PowerProfile('utc_datetime')
+                    self.curve_a.load(self.erp_curve['curve'])
+
+                    # only test data field
+                    self.curve_b = PowerProfile('utc_datetime')
+                    self.curve_b.load(create_test_curve(self.curve_a.start, self.curve_a.end))
+
+                    self.curve_c = PowerProfile('utc_datetime')
+                    self.curve_c.load(create_test_curve(self.curve_a.start, self.curve_a.end))
+
+                with it("raise a ValueError if p1 and p2 hasn't got same data fields"):
+
+                    expect(lambda: self.curve_a + self.curve_b).to(raise_error(PowerProfileIncompatible))
+
+                with it('substracts value column of two profiles when p1 - p2'):
+                    left = self.curve_b
+                    right = self.curve_c
+
+                    new = left - right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value - right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+                with it('substracts every data field column of two profiles when p1 - p2'):
+                    left = self.curve_a
+                    right = self.curve_a
+                    new = left - right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value - right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
+
+                with it('substracts every default data field column of two profiles when p1 - p2'):
+                    left = self.curve_a
+                    right = self.curve_a
+                    new = left - right
+
+                    expect(new).to(be_a(PowerProfile))
+
+                    left_fields = left.dump()[0].keys()
+                    new_fields = new.dump()[0].keys()
+                    expect(new_fields).to(equal(left_fields))
+
+                    for field in left_fields:
+                        for row in new:
+                            new_value = row[field]
+                            left_value = left[row['utc_datetime']][field]
+                            right_value = right[row['utc_datetime']][field]
+                            if field in DEFAULT_DATA_FIELDS:
+                                expect(new_value).to(equal(left_value - right_value))
+                            else:
+                                # no data field
+                                expect(new_value).to(equal(left_value))
 
 with description('PowerProfile Dump'):
     with before.all:
