@@ -370,9 +370,9 @@ with description('PowerProfile Manipulation'):
         with open(self.data_path + 'erp_curve.json') as fp:
             self.erp_curve = json.load(fp, object_hook=datetime_parser)
 
-    with context('Self transformation functions'):
+    with fcontext('Self transformation functions'):
         with context('Balance'):
-            with it('Performs and by hourly Balance between two magnitudes and stores in ac postfix columns'):
+            with it('Performs a by hourly Balance between two magnitudes and stores in ac postfix columns'):
                 powpro = PowerProfile()
                 powpro.load(self.erp_curve['curve'], datetime_field='utc_datetime')
 
@@ -382,11 +382,23 @@ with description('PowerProfile Manipulation'):
                 for i in range(powpro.hours):
                     row = powpro[i]
                     if row['ae'] >= row['ai']:
-                        row['ae_bal'] = row['ae'] - row['ai']
-                        row['ai_bal'] = 0.0
+                        expect(row['aebal']).to(equal(row['ae'] - row['ai']))
+                        expect(row['aibal']).to(equal(0.0))
                     else:
-                        row['ai_bal'] = row['ai'] - row['ae']
-                        row['ae_bal'] = 0.0
+                        expect(row['aibal']).to(equal(row['ai'] - row['ae']))
+                        expect(row['aebal']).to(equal(0.0))
+
+        with context('Min'):
+            with it('Performs a by hourly Min between two magnitudes amb stores un ac postfix columns'):
+                powpro = PowerProfile()
+                powpro.load(self.erp_curve['curve'], datetime_field='utc_datetime')
+
+                powpro.Min('ae', 'ai')
+
+                expect(powpro.check()).to(be_true)
+                for i in range(powpro.hours):
+                    row = powpro[i]
+                    expect(row['aeac']).to(equal(min(row['ae'], row['ai'])))
 
 with description('PowerProfile Operators'):
     with before.all:
