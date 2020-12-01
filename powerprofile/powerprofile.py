@@ -158,6 +158,21 @@ class PowerProfile():
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
         self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
 
+    def Min(self, magn1='ae', magn2='ai', sufix='ac'):
+        """
+        Allows easy AUTOCONSUMED curve from a curve with both exported and imported energy
+        Makes a positive always difference between two magnitudes row by row. It performs the difference between both
+        magnitudes:
+         * if positive, returns the value
+         * if negative or zero, returns first term (magn1)
+        of the magn1 selected magnitude with selected postfix
+        :param magn1: magnitude 1. 'ae' as default
+        :param magn2: magnitude 2. 'ai' as default
+        :param sufix: postfix of new fields 'ac' as default
+        :return:
+        """
+        self.curve[magn1 + sufix] = self.curve.apply(lambda row: min(row[magn1], row[magn2]), axis=1)
+
     # Operators
     # Binary
     def similar(self, right, data_fields=False):
