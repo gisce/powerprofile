@@ -18,7 +18,7 @@ UTC_TIMEZONE = timezone('UTC')
 
 
 DEFAULT_DATA_FIELDS_NO_FACT = ['ae', 'ai', 'r1', 'r2', 'r3', 'r4']
-DEFAULT_DATA_FIELDS = DEFAULT_DATA_FIELDS_NO_FACT + [f + '_fact' for f in DEFAULT_DATA_FIELDS_NO_FACT] + ['value']
+DEFAULT_DATA_FIELDS = DEFAULT_DATA_FIELDS_NO_FACT + [f + '_fact' for f in DEFAULT_DATA_FIELDS_NO_FACT] + [f + '_fix' for f in DEFAULT_DATA_FIELDS_NO_FACT] + ['value']
 
 
 class PowerProfile():
