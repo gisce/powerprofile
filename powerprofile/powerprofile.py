@@ -340,3 +340,10 @@ class PowerProfile():
             csvfile, sep=';', columns=cols, index=False, date_format='%Y-%m-%d %H:%M:%S%z', header=header
         )
         return csvfile.getvalue()
+
+
+class PowerProfileQh(PowerProfile):
+
+    @property
+    def hours(self):
+        return self.curve.count()[self.datetime_field] / 4.0
