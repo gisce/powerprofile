@@ -340,3 +340,28 @@ class PowerProfile():
             csvfile, sep=';', columns=cols, index=False, date_format='%Y-%m-%d %H:%M:%S%z', header=header
         )
         return csvfile.getvalue()
+
+
+class PowerProfileQh(PowerProfile):
+
+    @property
+    def hours(self):
+        return self.curve.count()[self.datetime_field] / 4.0
+
+    @property
+    def quart_hours(self):
+        return self.curve.count()[self.datetime_field]
+
+    def has_duplicates(self):
+        ''' Checks for duplicated hours'''
+        uniques = len(self.curve[self.datetime_field].unique())
+        if uniques != self.quart_hours:
+            return True
+        return False
+
+    def is_complete(self):
+        ''' Checks completeness of curve '''
+        quart_hours = (((self.end - self.start)).total_seconds() + 900) / 900
+        if self.quart_hours != quart_hours:
+            return False
+        return True
