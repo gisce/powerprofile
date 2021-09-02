@@ -81,7 +81,9 @@ class PowerProfile():
 
     def is_complete(self):
         ''' Checks completeness of curve '''
-        hours = (((self.end - self.start)).total_seconds() + 3600) / 3600
+        start = TIMEZONE.localize(self.start)
+        end = TIMEZONE.localize(self.end)
+        hours = ((end - start).total_seconds() + 3600) / 3600
         if self.hours != hours:
             return False
         return True
