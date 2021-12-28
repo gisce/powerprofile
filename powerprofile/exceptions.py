@@ -32,3 +32,12 @@ class PowerProfileNotImplemented(NotImplementedError):
 
     def __str__(self):
         return 'Operation not implemented: ' + self.message
+
+
+class PowerProfileMissingField(PowerProfileExceptionBaseClass):
+
+    def __init__(self, field=''):
+        self.field = field
+
+    def __str__(self):
+        return "Field does not exist in profile: {}" + self.field

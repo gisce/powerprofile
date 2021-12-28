@@ -93,6 +93,23 @@ class PowerProfile():
             return False
         return True
 
+    def is_fixed(self, fields=['cch_fact', 'valid']):
+        """
+        Given a list of fields, check all values are True in every register
+        :param fields []:
+        :return: list
+        """
+        for field in fields:
+            try:
+                data = self.curve.loc[self.curve[field] == False]
+            except KeyError as e:
+                raise PowerProfileMissingField(field)
+
+            if len(data) > 0:
+                return False
+            else:
+                return True
+
     def has_duplicates(self):
         ''' Checks for duplicated hours'''
         uniques = len(self.curve[self.datetime_field].unique())

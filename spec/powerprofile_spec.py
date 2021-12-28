@@ -200,7 +200,13 @@ with description('PowerProfile class'):
             self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
             self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
             for hours in range(0, 24):
-                self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
+                self.curve.append(
+                    {
+                        'timestamp': self.start + timedelta(hours=hours),
+                        'value': 100 + hours,
+                        'valid':True,
+                        'cch_fact': True}
+                )
 
             self.original_curve_len = len(self.curve)
             self.powpro = PowerProfile()
@@ -266,6 +272,39 @@ with description('PowerProfile class'):
                 expect(self.powpro.hours).to(equal(self.original_curve_len))
                 expect(self.powpro.has_duplicates()).to(be_true)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
+
+        with context('curve fixed'):
+            with it('returns true valid and cch_fact is true on all registers'):
+                self.powpro.load(self.curve)
+
+                expect(self.powpro.has_duplicates()).to(be_false)
+                expect(lambda: self.powpro.is_fixed(['valid', 'cch_fact'])).not_to(raise_error)
+
+            with it('returns false when one register is not valid'):
+                curve = copy(self.curve)
+                curve[3]['valid'] = False
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.is_fixed(['valid', 'cch_fact'])).to(be_false)
+
+            with it('returns false when one register is not cch_fact'):
+                curve = copy(self.curve)
+                curve[3]['cch_fact'] = False
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.is_fixed(['valid', 'cch_fact'])).to(be_false)
+
+            with it('returns false when one register is neither cch_fact nor valid'):
+                curve = copy(self.curve)
+                curve[3]['cch_fact'] = curve[3]['cch_fact'] = False
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.is_fixed(['valid', 'cch_fact'])).to(be_false)
+
+            with it('returns PowerProfileMissingField Exception'):
+                self.powpro.load(self.curve, self.start, self.end)
+
+                expect(lambda: self.powpro.is_fixed(['missing_field'])).to(raise_error(PowerProfileMissingField))
 
     with context('accessing data'):
         with before.all:
