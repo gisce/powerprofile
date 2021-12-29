@@ -102,13 +102,11 @@ class PowerProfile():
         for field in fields:
             try:
                 data = self.curve.loc[self.curve[field] == False]
+                if len(data) > 0:
+                    return False
             except KeyError as e:
                 raise PowerProfileMissingField(field)
-
-            if len(data) > 0:
-                return False
-            else:
-                return True
+        return True
 
     def has_duplicates(self):
         ''' Checks for duplicated hours'''
