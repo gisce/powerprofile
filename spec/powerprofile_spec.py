@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse as parse_datetime
 from pytz import timezone
-from copy import copy
+from copy import copy, deepcopy
 from powerprofile.exceptions import *
 import json
 import random
@@ -281,21 +281,21 @@ with description('PowerProfile class'):
                 expect(lambda: self.powpro.is_fixed(['valid', 'cch_fact'])).not_to(raise_error)
 
             with it('returns false when one register is not valid'):
-                curve = copy(self.curve)
+                curve = deepcopy(self.curve)
                 curve[3]['valid'] = False
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.is_fixed(['valid', 'cch_fact'])).to(be_false)
 
             with it('returns false when one register is not cch_fact'):
-                curve = copy(self.curve)
+                curve = deepcopy(self.curve)
                 curve[3]['cch_fact'] = False
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.is_fixed(['valid', 'cch_fact'])).to(be_false)
 
             with it('returns false when one register is neither cch_fact nor valid'):
-                curve = copy(self.curve)
+                curve = deepcopy(self.curve)
                 curve[3]['cch_fact'] = curve[3]['cch_fact'] = False
                 self.powpro.load(curve, self.start, self.end)
 
