@@ -182,14 +182,14 @@ class PowerProfile():
 
     def ApplyLbtLosses(self, trafo, losses, sufix='_fix'):
         """
-        Adds losses and trafo charge to consumption. Subs losses to generation.
+        Adds losses and trafo charge to consumption. Subs losses to generation. Curve is expressed in Wh.
         :param trafo: float (expressed in kVA)
         :param losses: float (usually, 0.04)
         :param sufix: str (magn where to apply losses, usually '_fix')
         :return:
         """
         def elevate(kva, losses, value):
-            return round(value * (1 + losses), 2) + round(0.01 * kva, 2)
+            return round(value * (1 + losses), 2) + round(10 * kva, 2)
 
         def descend(losses, value):
             return round(value * (1 - losses), 2)
