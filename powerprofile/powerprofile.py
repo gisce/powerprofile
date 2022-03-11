@@ -194,8 +194,8 @@ class PowerProfile():
         def descend(losses, value):
             return round(value * (1 - losses), 2)
 
-        self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai']), axis=1)
-        self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae']), axis=1)
+        self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai' + sufix]), axis=1)
+        self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae' + sufix]), axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """
