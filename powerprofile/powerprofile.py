@@ -180,6 +180,23 @@ class PowerProfile():
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
         self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
 
+    def ApplyLbtLosses(self, trafo, losses, sufix='_fix'):
+        """
+        Adds losses and trafo charge to consumption. Subs losses to generation.
+        :param trafo: float (expressed in kVA)
+        :param losses: float (usually, 0.04)
+        :param sufix: str (magn where to apply losses, usually '_fix')
+        :return:
+        """
+        def elevate(kva, losses, value):
+            return round(value * (1 + losses), 2) + round(0.01 * kva, 2)
+
+        def descend(losses, value):
+            return round(value * (1 - losses), 2)
+
+        self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai']), axis=1)
+        self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae']), axis=1)
+
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """
         Allows easy AUTOCONSUMED curve from a curve with both exported and imported energy
