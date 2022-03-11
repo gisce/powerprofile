@@ -439,6 +439,26 @@ with description('PowerProfile Manipulation'):
                     row = powpro[i]
                     expect(row['aeac']).to(equal(min(row['ae'], row['ai'])))
 
+        with context('ApplyLbtLosses'):
+            with it('Performs an application of LBT losses and store it in sufix columns'):
+                powpro = PowerProfile()
+                powpro.load(self.erp_curve['curve'], datetime_field='utc_datetime')
+
+                # Prepare _fix columns
+                powpro.curve['ai_fix'] = powpro.curve['ai']
+                powpro.curve['ae_fix'] = powpro.curve['ae']
+
+                trafo = 50  # kVA
+                losses = 0.04  # %
+                sufix = '_fix'  # 'ae_fix' and 'ai_fix'
+                powpro.ApplyLbtLosses(trafo, losses, sufix)
+
+                expect(powpro.check()).to(be_true)
+                for i in range(powpro.hours):
+                    row = powpro[i]
+                    expect(round(row['ai_fix'], 1)).to(equal(round((row['ai'] * (1 + losses) + (10 * trafo)), 1)))
+                    expect(round(row['ae_fix'], 1)).to(equal(round((row['ae'] * (1 - losses)), 1)))
+
 with description('PowerProfile Operators'):
     with before.all:
         self.data_path = './spec/data/'
