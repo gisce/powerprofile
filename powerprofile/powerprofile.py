@@ -130,13 +130,13 @@ class PowerProfile():
                 return False
         return True
 
-    def check(self, fields=[]):
+    def check(self):
         '''Tests curve validity'''
         if self.has_duplicates():
             raise PowerProfileDuplicatedTimes
         if not self.is_complete():
             raise PowerProfileIncompleteCurve
-        if not self.is_positive(fields):
+        if not self.is_positive():
             raise PowerProfileNegativeCurve
         return True
 
