@@ -115,13 +115,16 @@ class PowerProfile():
             return True
         return False
 
-    def is_positive(self, fields=[]):
+    def is_positive(self, fields=DEFAULT_DATA_FIELDS):
         """
         Checks if the curve does not have any negative value
         :param fields: list
         :return: boolean
         """
-        for field in fields:
+        curve_fields = list(self.curve.columns)
+        common_fields = list(set(fields).intersection(curve_fields))
+
+        for field in common_fields:
             data = self.curve.loc[self.curve[field] < 0]
             if len(data) > 0:
                 return False
