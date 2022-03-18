@@ -41,3 +41,8 @@ class PowerProfileMissingField(PowerProfileExceptionBaseClass):
 
     def __str__(self):
         return "Field does not exist in profile: {}" + self.field
+
+
+class PowerProfileNegativeCurve(PowerProfileExceptionBaseClass):
+
+    desc = "PowerProfile Negative Curve"

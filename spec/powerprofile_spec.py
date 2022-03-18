@@ -209,6 +209,10 @@ with description('PowerProfile class'):
                 )
 
             self.original_curve_len = len(self.curve)
+
+            self.data_path = './spec/data/'
+            with open(self.data_path + 'curve_all.json') as fp:
+                self.curve_all = json.load(fp, object_hook=datetime_parser)
             self.powpro = PowerProfile()
 
         with context('completeness'):
@@ -305,6 +309,34 @@ with description('PowerProfile class'):
                 self.powpro.load(self.curve, self.start, self.end)
 
                 expect(lambda: self.powpro.is_fixed(['missing_field'])).to(raise_error(PowerProfileMissingField))
+
+        with context('curve positive'):
+            with it('returns true when all columns > 0'):
+                self.powpro.load(self.curve_all['curve'], datetime_field='utc_datetime')
+
+                expect(self.powpro.is_positive()).to(be_true)
+
+            with it('returns PowerProfileNegativeCurve Exception when one ai is negative'):
+                curve = deepcopy(self.curve_all['curve'])
+                curve[0]['ai'] = -3
+                self.powpro.load(curve, datetime_field='utc_datetime')
+
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileNegativeCurve))
+
+            with it('returns PowerProfileNegativeCurve Exception when one ai_fact is negative'):
+                curve = deepcopy(self.curve_all['curve'])
+                curve[0]['ai_fact'] = -3
+                self.powpro.load(curve, datetime_field='utc_datetime')
+
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileNegativeCurve))
+
+            with it('returns PowerProfileNegativeCurve Exception when any measure is negative'):
+                for field in DEFAULT_DATA_FIELDS:
+                    curve = deepcopy(self.curve_all['curve'])
+                    curve[0][field] = -4
+                    self.powpro.load(curve, datetime_field='utc_datetime')
+
+                    expect(lambda: self.powpro.check()).to(raise_error(PowerProfileNegativeCurve))
 
     with context('accessing data'):
         with before.all:

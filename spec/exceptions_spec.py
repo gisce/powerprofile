@@ -9,6 +9,7 @@ except_data = [
     (PowerProfileIncompleteCurve, "PowerProfile Incomplete Curve"),
     (PowerProfileNotImplemented, "Operation not implemented"),
     (PowerProfileMissingField, "Field does not exist in profile: "),
+    (PowerProfileNegativeCurve, "PowerProfile Negative Curve")
 ]
 
 
