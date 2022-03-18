@@ -115,12 +115,26 @@ class PowerProfile():
             return True
         return False
 
-    def check(self):
+    def is_positive(self, fields=[]):
+        """
+        Checks if the curve does not have any negative value
+        :param fields: list
+        :return: boolean
+        """
+        for field in fields:
+            data = self.curve.loc[self.curve[field] < 0]
+            if len(data) > 0:
+                return False
+        return True
+
+    def check(self, fields=[]):
         '''Tests curve validity'''
         if self.has_duplicates():
             raise PowerProfileDuplicatedTimes
         if not self.is_complete():
             raise PowerProfileIncompleteCurve
+        if not self.is_positive(fields):
+            raise PowerProfileNegativeCurve
         return True
 
     def __getitem__(self, item):
