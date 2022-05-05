@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 import pandas as pd
 import copy
@@ -93,8 +93,12 @@ class PowerProfile():
 
         hours = ((end - start).total_seconds() + 3600) / 3600
         if self.hours != hours:
-            return False
-        return True
+            ids = set(self.curve[self.datetime_field])
+            dt = start
+            df_hours = set([TIMEZONE.normalize(dt + timedelta(hours=x)) for x in range(0, int(hours))])
+            first_not_found = list(df_hours - ids)[0]
+            return False, first_not_found
+        return True, None
 
     def is_fixed(self, fields=['cch_fact', 'valid']):
         """
@@ -137,11 +141,12 @@ class PowerProfile():
 
     def check(self):
         '''Tests curve validity'''
-        has_duplicates, duplicates = self.has_duplicates()
+        has_duplicates, first_duplicated = self.has_duplicates()
         if has_duplicates:
-            raise PowerProfileDuplicatedTimes(message=duplicates)
-        if not self.is_complete():
-            raise PowerProfileIncompleteCurve
+            raise PowerProfileDuplicatedTimes(message=first_duplicated)
+        is_complete, first_not_found = self.is_complete()
+        if not is_complete:
+            raise PowerProfileIncompleteCurve(message=first_not_found)
         if not self.is_positive():
             raise PowerProfileNegativeCurve
         return True

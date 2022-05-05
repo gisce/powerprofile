@@ -220,7 +220,7 @@ with description('PowerProfile class'):
             with it('returns true when complete'):
                 self.powpro.load(self.curve)
 
-                expect(self.powpro.is_complete()).to(be_true)
+                expect(self.powpro.is_complete()[0]).to(be_true)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
 
             with it('returns false when hole'):
@@ -229,7 +229,7 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
-                expect(self.powpro.is_complete()).to(be_false)
+                expect(self.powpro.is_complete()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
 
             with it('returns false when hole at beginning'):
@@ -238,16 +238,16 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
-                expect(self.powpro.is_complete()).to(be_false)
+                expect(self.powpro.is_complete()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
 
             with it('returns false when hole at end'):
                 curve = copy(self.curve)
-                del curve[0]
+                del curve[-1]
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
-                expect(self.powpro.is_complete()).to(be_false)
+                expect(self.powpro.is_complete()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
 
         with context('duplicated hours'):
