@@ -115,8 +115,10 @@ class PowerProfile():
         ''' Checks for duplicated hours'''
         uniques = len(self.curve[self.datetime_field].unique())
         if uniques != self.hours:
-            return True
-        return False
+            ids = self.curve[self.datetime_field]
+            first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field][0]
+            return True, first_occurrence
+        return False, None
 
     def is_positive(self, fields=DEFAULT_DATA_FIELDS):
         """
@@ -135,8 +137,9 @@ class PowerProfile():
 
     def check(self):
         '''Tests curve validity'''
-        if self.has_duplicates():
-            raise PowerProfileDuplicatedTimes
+        has_duplicates, duplicates = self.has_duplicates()
+        if has_duplicates:
+            raise PowerProfileDuplicatedTimes(message=duplicates)
         if not self.is_complete():
             raise PowerProfileIncompleteCurve
         if not self.is_positive():

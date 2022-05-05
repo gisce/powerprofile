@@ -255,7 +255,7 @@ with description('PowerProfile class'):
             with it('returns true when not duplicates'):
                 self.powpro.load(self.curve)
 
-                expect(self.powpro.has_duplicates()).to(be_false)
+                expect(self.powpro.has_duplicates()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
 
             with it('returns false when duplicates extra hour'):
@@ -264,7 +264,7 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len + 1))
-                expect(self.powpro.has_duplicates()).to(be_true)
+                expect(self.powpro.has_duplicates()[0]).to(be_true)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
 
             with it('returns false when duplicates and correct length'):
@@ -274,14 +274,14 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len))
-                expect(self.powpro.has_duplicates()).to(be_true)
+                expect(self.powpro.has_duplicates()[0]).to(be_true)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
 
         with context('curve fixed'):
             with it('returns true valid and cch_fact is true on all registers'):
                 self.powpro.load(self.curve)
 
-                expect(self.powpro.has_duplicates()).to(be_false)
+                expect(self.powpro.has_duplicates()[0]).to(be_false)
                 expect(lambda: self.powpro.is_fixed(['valid', 'cch_fact'])).not_to(raise_error)
 
             with it('returns false when one register is not valid'):
