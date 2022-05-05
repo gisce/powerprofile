@@ -218,14 +218,17 @@ class PowerProfile():
 
         # Avoid decimal values on measures files, dragging them before balance
         if dragging:
-            draggers = {'ai' + sufix: Dragger(),
-                        'ae' + sufix: Dragger()}
-            self.curve['ai' + sufix] = self.curve.apply(
-                lambda row: draggers['ai' + sufix].drag(round(row['ai' + sufix], 2)), axis=1
-            )
-            self.curve['ae' + sufix] = self.curve.apply(
-                lambda row: draggers['ae' + sufix].drag(round(row['ae' + sufix], 2)), axis=1
-            )
+            self.drag(['ai' + sufix, 'ae' + sufix])
+
+    def drag(self, magns):
+        """
+        Allows to drag the decimal values for specified magns on current curve
+        :param magns: list of str (e.g. ['ai_fix', 'ae_fix'])
+        :return:
+        """
+        for magn in magns:
+            draggers = Dragger()
+            self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn], 2)), axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """
