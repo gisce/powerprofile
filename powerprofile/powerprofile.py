@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 import pandas as pd
 import copy
 from .exceptions import *
+from .utils import Dragger
 try:
     # Python 2
     from cStringIO import StringIO
@@ -48,6 +49,8 @@ class PowerProfile():
             raise TypeError("ERROR: No timestamp field. Use datetime_field option to set curve datetime field")
 
         self.curve = pd.DataFrame(data)
+        self.curve.sort_values(by=self.datetime_field, inplace=True)
+        self.curve.reset_index(inplace=True, drop=True)
 
         if start:
             self.start = start
@@ -90,8 +93,12 @@ class PowerProfile():
 
         hours = ((end - start).total_seconds() + 3600) / 3600
         if self.hours != hours:
-            return False
-        return True
+            ids = set(self.curve[self.datetime_field])
+            dt = start
+            df_hours = set([TIMEZONE.normalize(dt + timedelta(hours=x)) for x in range(0, int(hours))])
+            first_not_found = list(df_hours - ids)[0]
+            return False, first_not_found
+        return True, None
 
     def is_fixed(self, fields=['cch_fact', 'valid']):
         """
@@ -112,8 +119,10 @@ class PowerProfile():
         ''' Checks for duplicated hours'''
         uniques = len(self.curve[self.datetime_field].unique())
         if uniques != self.hours:
-            return True
-        return False
+            ids = self.curve[self.datetime_field]
+            first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field][0]
+            return True, first_occurrence
+        return False, None
 
     def is_positive(self, fields=DEFAULT_DATA_FIELDS):
         """
@@ -132,10 +141,12 @@ class PowerProfile():
 
     def check(self):
         '''Tests curve validity'''
-        if self.has_duplicates():
-            raise PowerProfileDuplicatedTimes
-        if not self.is_complete():
-            raise PowerProfileIncompleteCurve
+        has_duplicates, first_duplicated = self.has_duplicates()
+        if has_duplicates:
+            raise PowerProfileDuplicatedTimes(message=first_duplicated)
+        is_complete, first_not_found = self.is_complete()
+        if not is_complete:
+            raise PowerProfileIncompleteCurve(message=first_not_found)
         if not self.is_positive():
             raise PowerProfileNegativeCurve
         return True
@@ -197,12 +208,13 @@ class PowerProfile():
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
         self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
 
-    def ApplyLbtLosses(self, trafo, losses, sufix='_fix'):
+    def ApplyLbtLosses(self, trafo, losses, sufix='_fix', dragging=True):
         """
         Adds losses and trafo charge to consumption. Subs losses to generation. Curve is expressed in Wh.
         :param trafo: float (expressed in kVA)
         :param losses: float (usually, 0.04)
         :param sufix: str (magn where to apply losses, usually '_fix')
+        :param dragging: bool (if True, magns are dragged after apply LBT losses)
         :return:
         """
         def elevate(kva, losses, value):
@@ -213,6 +225,20 @@ class PowerProfile():
 
         self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai' + sufix]), axis=1)
         self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae' + sufix]), axis=1)
+
+        # Avoid decimal values on measures files, dragging them before balance
+        if dragging:
+            self.drag(['ai' + sufix, 'ae' + sufix])
+
+    def drag(self, magns):
+        """
+        Allows to drag the decimal values for specified magns on current curve
+        :param magns: list of str (e.g. ['ai_fix', 'ae_fix'])
+        :return:
+        """
+        for magn in magns:
+            draggers = Dragger()
+            self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn], 2)), axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """

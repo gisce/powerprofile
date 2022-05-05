@@ -220,7 +220,7 @@ with description('PowerProfile class'):
             with it('returns true when complete'):
                 self.powpro.load(self.curve)
 
-                expect(self.powpro.is_complete()).to(be_true)
+                expect(self.powpro.is_complete()[0]).to(be_true)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
 
             with it('returns false when hole'):
@@ -229,7 +229,7 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
-                expect(self.powpro.is_complete()).to(be_false)
+                expect(self.powpro.is_complete()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
 
             with it('returns false when hole at beginning'):
@@ -238,16 +238,16 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
-                expect(self.powpro.is_complete()).to(be_false)
+                expect(self.powpro.is_complete()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
 
             with it('returns false when hole at end'):
                 curve = copy(self.curve)
-                del curve[0]
+                del curve[-1]
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
-                expect(self.powpro.is_complete()).to(be_false)
+                expect(self.powpro.is_complete()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
 
         with context('duplicated hours'):
@@ -255,7 +255,7 @@ with description('PowerProfile class'):
             with it('returns true when not duplicates'):
                 self.powpro.load(self.curve)
 
-                expect(self.powpro.has_duplicates()).to(be_false)
+                expect(self.powpro.has_duplicates()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
 
             with it('returns false when duplicates extra hour'):
@@ -264,7 +264,7 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len + 1))
-                expect(self.powpro.has_duplicates()).to(be_true)
+                expect(self.powpro.has_duplicates()[0]).to(be_true)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
 
             with it('returns false when duplicates and correct length'):
@@ -274,14 +274,14 @@ with description('PowerProfile class'):
                 self.powpro.load(curve, self.start, self.end)
 
                 expect(self.powpro.hours).to(equal(self.original_curve_len))
-                expect(self.powpro.has_duplicates()).to(be_true)
+                expect(self.powpro.has_duplicates()[0]).to(be_true)
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
 
         with context('curve fixed'):
             with it('returns true valid and cch_fact is true on all registers'):
                 self.powpro.load(self.curve)
 
-                expect(self.powpro.has_duplicates()).to(be_false)
+                expect(self.powpro.has_duplicates()[0]).to(be_false)
                 expect(lambda: self.powpro.is_fixed(['valid', 'cch_fact'])).not_to(raise_error)
 
             with it('returns false when one register is not valid'):
@@ -488,8 +488,26 @@ with description('PowerProfile Manipulation'):
                 expect(powpro.check()).to(be_true)
                 for i in range(powpro.hours):
                     row = powpro[i]
-                    expect(round(row['ai_fix'], 1)).to(equal(round((row['ai'] * (1 + losses) + (10 * trafo)), 1)))
-                    expect(round(row['ae_fix'], 1)).to(equal(round((row['ae'] * (1 - losses)), 1)))
+                    assert abs(round(row['ai_fix'], 1) - round((row['ai'] * (1 + losses) + (10 * trafo)), 1)) <= 1.0
+                    assert abs(round(row['ae_fix'], 1) - round((row['ae'] * (1 - losses)), 1)) <= 1.0
+
+        with context('Dragg'):
+            with it('Performs a dragging operation through float values of specified magnitudes on curve'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+                real_ai_sum = powpro.curve['ai'].sum()
+                real_ae_sum = powpro.curve['ae'].sum()
+
+                powpro.drag(['ai', 'ae'])
+                dragged_ai_sum = powpro.curve['ai'].sum()
+                dragged_ae_sum = powpro.curve['ae'].sum()
+
+                assert abs(real_ai_sum - dragged_ai_sum) <= 1.0
+                assert abs(real_ae_sum - dragged_ae_sum) <= 1.0
 
 with description('PowerProfile Operators'):
     with before.all:
