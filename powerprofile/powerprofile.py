@@ -49,6 +49,8 @@ class PowerProfile():
             raise TypeError("ERROR: No timestamp field. Use datetime_field option to set curve datetime field")
 
         self.curve = pd.DataFrame(data)
+        self.curve.sort_values(by=self.datetime_field, inplace=True)
+        self.curve.reset_index(inplace=True, drop=True)
 
         if start:
             self.start = start
