@@ -491,6 +491,24 @@ with description('PowerProfile Manipulation'):
                     expect(round(row['ai_fix'], 1)).to(equal(round((row['ai'] * (1 + losses) + (10 * trafo)), 1)))
                     expect(round(row['ae_fix'], 1)).to(equal(round((row['ae'] * (1 - losses)), 1)))
 
+        with context('Dragg'):
+            with it('Performs a dragging operation through float values of specified magnitudes on curve'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+                real_ai_sum = powpro.curve['ai'].sum()
+                real_ae_sum = powpro.curve['ae'].sum()
+
+                powpro.drag(['ai', 'ae'])
+                dragged_ai_sum = powpro.curve['ai'].sum()
+                dragged_ae_sum = powpro.curve['ae'].sum()
+
+                assert(abs(real_ai_sum - dragged_ai_sum) < 1.0)
+                assert(abs(real_ae_sum - dragged_ae_sum) < 1.0)
+
 with description('PowerProfile Operators'):
     with before.all:
         self.data_path = './spec/data/'
