@@ -1,10 +1,7 @@
-# powerprofile
+# PowerProfile
 
-.. image:: https://github.com/gisce/powerprofile/actions/workflows/python2-app.yml/badge.svg
-    :target: https://github.com/gisce/powerprofile/actions/workflows/python2-app.yml
-
-.. image:: https://github.com/gisce/powerprofile/actions/workflows/python3-app.yml/badge.svg
-    :target: https://github.com/gisce/powerprofile/actions/workflows/python3-app.yml
+![Build Status](https://github.com/gisce/powerprofile/actions/workflows/python2-app.yml/badge.svg)
+![Build Status](https://github.com/gisce/powerprofile/actions/workflows/python3-app.yml/badge.svg)
 
 Electric Power Curve and Profiles library
 
