@@ -225,15 +225,21 @@ class PowerProfile():
         self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai' + sufix]), axis=1)
         self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae' + sufix]), axis=1)
 
-    def drag(self, magns):
+    def drag(self, magns, drag_key=None):
         """
         Allows to drag the decimal values for specified magns on current curve
         :param magns: list of str (e.g. ['ai_fix', 'ae_fix'])
+        :param drag_key: str (e.g. 'period', None by default)
         :return:
         """
         for magn in magns:
             draggers = Dragger()
-            self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6)), axis=1)
+            # Dragg field is specified and exists in curve
+            if drag_key is not None and drag_key in self.curve:
+                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6),
+                                                                              key=row[drag_key]), axis=1)
+            else:
+                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6)), axis=1)
             self.curve[magn] = self.curve.apply(lambda row: row[magn] * 1000, axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
