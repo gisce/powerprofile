@@ -488,8 +488,9 @@ with description('PowerProfile Manipulation'):
                 expect(powpro.check()).to(be_true)
                 for i in range(powpro.hours):
                     row = powpro[i]
-                    assert abs(round(row['ai_fix'], 1) - round((row['ai'] * (1 + losses) + (10 * trafo)), 1)) <= 1.0
-                    assert abs(round(row['ae_fix'], 1) - round((row['ae'] * (1 - losses)), 1)) <= 1.0
+                    # Max error allower is 1000 Wh (1 kWh)
+                    assert abs(round(row['ai_fix'], 1) - round((row['ai'] * (1 + losses) + (10 * trafo)), 1)) <= 1000.0
+                    assert abs(round(row['ae_fix'], 1) - round((row['ae'] * (1 - losses)), 1)) <= 1000.0
 
         with context('Dragg'):
             with it('Performs a dragging operation through float values of specified magnitudes on curve'):
@@ -506,8 +507,9 @@ with description('PowerProfile Manipulation'):
                 dragged_ai_sum = powpro.curve['ai'].sum()
                 dragged_ae_sum = powpro.curve['ae'].sum()
 
-                assert abs(real_ai_sum - dragged_ai_sum) <= 1.0
-                assert abs(real_ae_sum - dragged_ae_sum) <= 1.0
+                # Max error allower is 1000 Wh (1 kWh)
+                assert abs(real_ai_sum - dragged_ai_sum) <= 1000.0
+                assert abs(real_ae_sum - dragged_ae_sum) <= 1000.0
 
 with description('PowerProfile Operators'):
     with before.all:

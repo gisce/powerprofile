@@ -238,7 +238,7 @@ class PowerProfile():
         """
         for magn in magns:
             draggers = Dragger()
-            self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 2)), axis=1)
+            self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6)), axis=1)
             self.curve[magn] = self.curve.apply(lambda row: row[magn] * 1000, axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
