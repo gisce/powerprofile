@@ -208,13 +208,12 @@ class PowerProfile():
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
         self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
 
-    def ApplyLbtLosses(self, trafo, losses, sufix='_fix', dragging=True):
+    def ApplyLbtLosses(self, trafo, losses, sufix='_fix'):
         """
         Adds losses and trafo charge to consumption. Subs losses to generation. Curve is expressed in Wh.
         :param trafo: float (expressed in kVA)
         :param losses: float (usually, 0.04)
         :param sufix: str (magn where to apply losses, usually '_fix')
-        :param dragging: bool (if True, magns are dragged after apply LBT losses)
         :return:
         """
         def elevate(kva, losses, value):
@@ -225,10 +224,6 @@ class PowerProfile():
 
         self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai' + sufix]), axis=1)
         self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae' + sufix]), axis=1)
-
-        # Avoid decimal values on measures files, dragging them before balance
-        if dragging:
-            self.drag(['ai' + sufix, 'ae' + sufix])
 
     def drag(self, magns):
         """
