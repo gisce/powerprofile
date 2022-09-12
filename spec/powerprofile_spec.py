@@ -160,6 +160,19 @@ with description('PowerProfile class'):
                 expect(lambda: powpro.load(curve_name, data_fields=['value'])).to_not(raise_error(TypeError))
                 expect(powpro[0]).to(have_key('value'))
 
+        with context('with unlocalized datetimes'):
+            with before.all:
+                self.curve = []
+                self.start = datetime(2022, 8, 1, 1, 0, 0)
+                self.end = datetime(2022, 9, 1, 0, 0, 0)
+                for hours in range(0, 24):
+                    self.curve.append({'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours})
+            with it('should localize datetimes on load'):
+                powerprofile = PowerProfile()
+                powerprofile.load(self.curve)
+                for idx, hour in powerprofile.curve.iterrows():
+                    assert hour[powerprofile.datetime_field].tzinfo is not None
+
     with context('dump function'):
         with before.all:
             self.curve = []
