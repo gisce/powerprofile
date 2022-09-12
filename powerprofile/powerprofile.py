@@ -51,6 +51,8 @@ class PowerProfile():
         self.curve = pd.DataFrame(data)
         self.curve.sort_values(by=self.datetime_field, inplace=True)
         self.curve.reset_index(inplace=True, drop=True)
+        # Ensure timestamp field is localized
+        self.curve[self.datetime_field] = self.curve.apply(lambda row: self.ensure_localized_dt(row), axis=1)
 
         if start:
             self.start = start
@@ -71,6 +73,13 @@ class PowerProfile():
                 if field in loaded_data_fields and field in self.data_fields:
                     auto_data_fields.append(field)
             self.data_fields = auto_data_fields
+
+    def ensure_localized_dt(self, row):
+        dt = row[self.datetime_field]
+        if dt.tzinfo is None:
+            return TIMEZONE.localize(dt)
+        else:
+            return dt
 
     def dump(self):
 
