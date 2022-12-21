@@ -434,6 +434,31 @@ class PowerProfile():
         )
         return csvfile.getvalue()
 
+    def get_complete_daily_subcurve(self):
+        """
+        Returns partial curve from first hour to last complete day without gaps nor duplicities
+        :return: dataframe
+        """
+        first_gap = None
+        iscomplete, gap = self.is_complete()
+        if gap is not None:
+            first_gap = gap
+
+        hasduplicates, gap = self.has_duplicates()
+        if gap is not None:
+            first_gap = min(first_gap, gap)
+
+        if first_gap is None:
+            return self.curve
+        else:
+            last_hour = TIMEZONE.normalize(first_gap - timedelta(hours=1))
+            if last_hour.hour > 0:
+                last_hour = last_hour.replace(hour=0)
+            if last_hour >= self.start:
+                return self.curve[self.curve['timestamp'] <= last_hour]
+            else:
+                return pd.DataFrame()
+
 
 class PowerProfileQh(PowerProfile):
 
