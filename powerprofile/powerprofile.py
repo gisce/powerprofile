@@ -177,7 +177,7 @@ class PowerProfile():
             powpro.end = res.iloc[-1][self.datetime_field]
             return powpro
         elif isinstance(item, datetime):
-            if not datetime.tzinfo:
+            if not item.tzinfo:
                 raise TypeError('Datetime must be a localized datetime')
 
             res = self.curve.loc[self.curve[self.datetime_field] == item]
