@@ -458,7 +458,7 @@ class PowerProfile():
                 data = self.curve[self.curve[self.datetime_field] <= last_hour]
                 data = data.to_dict('records')
                 res = PowerProfile()
-                res.load(data)
+                res.load(data, datetime_field=self.datetime_field)
             else:
                 res = PowerProfile()
             return res
