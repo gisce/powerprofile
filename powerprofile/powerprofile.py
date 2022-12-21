@@ -129,7 +129,7 @@ class PowerProfile():
         uniques = len(self.curve[self.datetime_field].unique())
         if uniques != self.hours:
             ids = self.curve[self.datetime_field]
-            first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field][0]
+            first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field].min()
             return True, first_occurrence
         return False, None
 
