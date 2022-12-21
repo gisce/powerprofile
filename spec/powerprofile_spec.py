@@ -351,6 +351,53 @@ with description('PowerProfile class'):
 
                     expect(lambda: self.powpro.check()).to(raise_error(PowerProfileNegativeCurve))
 
+        with context('complete subcurve'):
+            with before.all:
+                self.curve_subcurve_testing = []
+                self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+                self.end = LOCAL_TZ.localize(datetime(2020, 3, 13, 0, 0, 0))
+                for hours in range(0, 48):
+                    self.curve_subcurve_testing.append(
+                        {'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours}
+                    )
+                self.powpro_subcurve_testing = PowerProfile()
+
+                self.curve_subcurve_testing2 = []
+                for hours in range(0, 43):
+                    self.curve_subcurve_testing2.append(
+                        {'timestamp': self.start + timedelta(hours=hours), 'value': 100 + hours}
+                    )
+                for hours in range(43, 48):
+                    self.curve_subcurve_testing2.append(
+                        {'timestamp': self.start + timedelta(hours=hours - 1), 'value': 100 + hours}
+                    )
+                self.powpro_subcurve_testing2 = PowerProfile()
+
+                self.powpro_subcurve_testing3 = PowerProfile()
+
+            with it('returns first complete part of curve if there are gaps'):
+                curve = copy(self.curve_subcurve_testing)
+                del curve[-1]
+                self.powpro_subcurve_testing.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing.get_complete_daily_subcurve()
+                expect(len(pp.curve)).to(equal(24))
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing[23]['timestamp']))
+
+            with it('returns first complete part of curve if there are duplicated hours'):
+                curve = copy(self.curve_subcurve_testing2)
+                del curve[-1]
+                self.powpro_subcurve_testing2.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing2.get_complete_daily_subcurve()
+                expect(len(pp.curve)).to(equal(24))
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing2[23]['timestamp']))
+
+            with it('returns empty PowerProfile if first hour is lost'):
+                curve = copy(self.curve_subcurve_testing)
+                del curve[0]
+                self.powpro_subcurve_testing3.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing3.get_complete_daily_subcurve()
+                expect((pp.curve)).to(equal(None))
+
     with context('accessing data'):
         with before.all:
             self.curve = []

@@ -129,7 +129,7 @@ class PowerProfile():
         uniques = len(self.curve[self.datetime_field].unique())
         if uniques != self.hours:
             ids = self.curve[self.datetime_field]
-            first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field][0]
+            first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field].min()
             return True, first_occurrence
         return False, None
 
@@ -177,7 +177,7 @@ class PowerProfile():
             powpro.end = res.iloc[-1][self.datetime_field]
             return powpro
         elif isinstance(item, datetime):
-            if not datetime.tzinfo:
+            if not item.tzinfo:
                 raise TypeError('Datetime must be a localized datetime')
 
             res = self.curve.loc[self.curve[self.datetime_field] == item]
@@ -433,6 +433,35 @@ class PowerProfile():
             csvfile, sep=';', columns=cols, index=False, date_format='%Y-%m-%d %H:%M:%S%z', header=header
         )
         return csvfile.getvalue()
+
+    def get_complete_daily_subcurve(self):
+        """
+        Returns partial curve from first hour to last complete day without gaps nor duplicities
+        :return: dataframe
+        """
+        first_gap = None
+        iscomplete, gap = self.is_complete()
+        if gap is not None:
+            first_gap = gap
+
+        hasduplicates, gap = self.has_duplicates()
+        if gap is not None:
+            first_gap = min(first_gap, gap)
+
+        if first_gap is None:
+            return self.curve
+        else:
+            last_hour = TIMEZONE.normalize(first_gap - timedelta(hours=1))
+            if last_hour.hour > 0:
+                last_hour = last_hour.replace(hour=0)
+            if last_hour >= self.start:
+                data = self.curve[self.curve['timestamp'] <= last_hour]
+                data = data.to_dict('records')
+                res = PowerProfile()
+                res.load(data)
+            else:
+                res = PowerProfile()
+            return res
 
 
 class PowerProfileQh(PowerProfile):
