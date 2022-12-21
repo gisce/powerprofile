@@ -455,9 +455,13 @@ class PowerProfile():
             if last_hour.hour > 0:
                 last_hour = last_hour.replace(hour=0)
             if last_hour >= self.start:
-                return self.curve[self.curve['timestamp'] <= last_hour]
+                data = self.curve[self.curve['timestamp'] <= last_hour]
+                data = data.to_dict('records')
+                res = PowerProfile()
+                res.load(data)
             else:
-                return pd.DataFrame()
+                res = PowerProfile()
+            return res
 
 
 class PowerProfileQh(PowerProfile):

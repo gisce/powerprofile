@@ -379,24 +379,24 @@ with description('PowerProfile class'):
                 curve = copy(self.curve_subcurve_testing)
                 del curve[-1]
                 self.powpro_subcurve_testing.load(curve, self.start, self.end)
-                df = self.powpro_subcurve_testing.get_complete_daily_subcurve()
-                expect(len(df)).to(equal(24))
-                expect(df['timestamp'].max()).to(equal(self.curve_subcurve_testing[23]['timestamp']))
+                pp = self.powpro_subcurve_testing.get_complete_daily_subcurve()
+                expect(len(pp.curve)).to(equal(24))
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing[23]['timestamp']))
 
             with it('returns first complete part of curve if there are duplicated hours'):
                 curve = copy(self.curve_subcurve_testing2)
                 del curve[-1]
                 self.powpro_subcurve_testing2.load(curve, self.start, self.end)
-                df = self.powpro_subcurve_testing2.get_complete_daily_subcurve()
-                expect(len(df)).to(equal(24))
-                expect(df['timestamp'].max()).to(equal(self.curve_subcurve_testing2[23]['timestamp']))
+                pp = self.powpro_subcurve_testing2.get_complete_daily_subcurve()
+                expect(len(pp.curve)).to(equal(24))
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing2[23]['timestamp']))
 
-            with it('returns empty dataframe if first hour is lost'):
+            with it('returns empty PowerProfile if first hour is lost'):
                 curve = copy(self.curve_subcurve_testing)
                 del curve[0]
                 self.powpro_subcurve_testing3.load(curve, self.start, self.end)
-                df = self.powpro_subcurve_testing3.get_complete_daily_subcurve()
-                expect(len(df)).to(equal(0))
+                pp = self.powpro_subcurve_testing3.get_complete_daily_subcurve()
+                expect((pp.curve)).to(equal(None))
 
     with context('accessing data'):
         with before.all:
