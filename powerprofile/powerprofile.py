@@ -449,7 +449,7 @@ class PowerProfile():
             first_gap = min(first_gap, gap)
 
         if first_gap is None:
-            return self.curve
+            return self
         else:
             last_hour = TIMEZONE.normalize(first_gap - timedelta(hours=1))
             if last_hour.hour > 0:
