@@ -105,7 +105,8 @@ class PowerProfile():
             ids = set(self.curve[self.datetime_field])
             dt = start
             df_hours = set([TIMEZONE.normalize(dt + timedelta(hours=x)) for x in range(0, int(hours))])
-            first_not_found = list(df_hours - ids)[0]
+            not_found = sorted(list(df_hours - ids))
+            first_not_found = not_found[0]
             return False, first_not_found
         return True, None
 
