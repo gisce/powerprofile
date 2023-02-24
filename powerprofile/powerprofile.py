@@ -106,7 +106,10 @@ class PowerProfile():
             dt = start
             df_hours = set([TIMEZONE.normalize(dt + timedelta(hours=x)) for x in range(0, int(hours))])
             not_found = sorted(list(df_hours - ids))
-            first_not_found = not_found[0]
+            if len(not_found):
+                first_not_found = not_found[0]
+            else:
+                first_not_found = dt
             return False, first_not_found
         return True, None
 
