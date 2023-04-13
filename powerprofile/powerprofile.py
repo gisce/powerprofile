@@ -194,7 +194,7 @@ class PowerProfile():
         :param magns: magnitudes
         :return: dict a key for every magnitude in magns dict
         """
-        totals = self.curve.sum()
+        totals = self.curve[magns].sum()
         res = {}
         for magn in magns:
             res[magn] = totals[magn]
