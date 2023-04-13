@@ -450,7 +450,10 @@ class PowerProfile():
 
         hasduplicates, gap = self.has_duplicates()
         if gap is not None:
-            first_gap = min(first_gap, gap)
+            if first_gap is None:
+                first_gap = gap
+            else:
+                first_gap = min(first_gap, gap)
 
         if first_gap is None:
             return self
