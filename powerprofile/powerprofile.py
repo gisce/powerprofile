@@ -194,7 +194,7 @@ class PowerProfile():
         :param magns: magnitudes
         :return: dict a key for every magnitude in magns dict
         """
-        totals = self.curve.sum()
+        totals = self.curve[magns].sum()
         res = {}
         for magn in magns:
             res[magn] = totals[magn]
@@ -450,7 +450,10 @@ class PowerProfile():
 
         hasduplicates, gap = self.has_duplicates()
         if gap is not None:
-            first_gap = min(first_gap, gap)
+            if first_gap is None:
+                first_gap = gap
+            else:
+                first_gap = min(first_gap, gap)
 
         if first_gap is None:
             return self
