@@ -200,6 +200,24 @@ class PowerProfile():
             res[magn] = totals[magn]
         return res
 
+    def max(self, magn):
+        """
+        Returns max value of given magnitude of the curve
+        :param magn: magnitude value
+        :return: max magnitude value
+        """
+        if self._check_magn_is_valid(magn):
+            return self.curve[magn].max()
+
+    def min(self, magn):
+        """
+        Returns min value of given magnitude of the curve
+        :param magn: magnitude value
+        :return: min magnitude value
+        """
+        if self._check_magn_is_valid(magn):
+            return self.curve[magn].min()
+
     # Transformations
     def Balance(self, magn1='ai', magn2='ae', sufix='bal'):
         """
@@ -469,6 +487,11 @@ class PowerProfile():
             else:
                 res = PowerProfile()
             return res
+
+    def _check_magn_is_valid(self, magn):
+        if magn in DEFAULT_DATA_FIELDS_NO_FACT:
+            return True
+        raise ValueError("ERROR: [magn] is not a valid parameter, given magn: {}".format(magn))
 
 
 class PowerProfileQh(PowerProfile):

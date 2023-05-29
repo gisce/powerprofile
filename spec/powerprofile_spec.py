@@ -580,6 +580,67 @@ with description('PowerProfile Manipulation'):
                 assert abs(real_ai_sum - dragged_ai_sum) <= 1000.0
                 assert abs(real_ae_sum - dragged_ae_sum) <= 1000.0
 
+        with context('min'):
+            with it('Performs a min operation through float values of specified magnitude on curve'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                min_ai = powpro.min('ai')
+                min_ae = powpro.min('ae')
+
+                json_min_ai = min(curve_all['curve'], key=lambda x:x['ai'])
+                json_min_ae = min(curve_all['curve'], key=lambda x: x['ae'])
+
+                expect(min_ai).to(equal(json_min_ai['ai']))
+                expect(min_ae).to(equal(json_min_ae['ae']))
+
+            with it('returns error if magn is invalid'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                expect(lambda: powpro.min('invalid_magn')).to(
+                    raise_error(ValueError, 'ERROR: [magn] is not a valid parameter, given magn: invalid_magn')
+                )
+
+        with context('max'):
+            with it('Performs a max operation through float values of specified magnitude on curve'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                max_ai = powpro.max('ai')
+                max_ae = powpro.max('ae')
+
+                json_max_ai = max(curve_all['curve'], key=lambda x: x['ai'])
+                json_max_ae = max(curve_all['curve'], key=lambda x: x['ae'])
+
+                expect(max_ai).to(equal(json_max_ai['ai']))
+                expect(max_ae).to(equal(json_max_ae['ae']))
+
+            with it('returns error if magn is invalid'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                expect(lambda: powpro.max('invalid_magn')).to(
+                    raise_error(ValueError, 'ERROR: [magn] is not a valid parameter, given magn: invalid_magn')
+                )
+
+
 with description('PowerProfile Operators'):
     with before.all:
         self.data_path = './spec/data/'
