@@ -380,6 +380,7 @@ class PowerProfile():
         new.start = self.start
         new.end = self.end
         new.curve = copy.copy(self.curve)
+        new.data_fields = copy.copy(self.data_fields)
 
         return new
 
