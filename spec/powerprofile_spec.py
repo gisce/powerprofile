@@ -562,7 +562,7 @@ with description('PowerProfile Manipulation'):
                     assert abs(round(row['ae_fix'], 1) - round((row['ae'] * (1 - losses)), 1)) <= 1000.0
 
         with context('Dragg'):
-            with it('Performs a dragging operation through float values of specified magnitudes on curve'):
+            with it('performs a dragging operation through float values of specified magnitudes on curve'):
                 data_path = './spec/data/'
                 with open(data_path + 'demo_ac_curve.json') as fp:
                     curve_all = json.load(fp, object_hook=datetime_parser)
@@ -581,7 +581,7 @@ with description('PowerProfile Manipulation'):
                 assert abs(real_ae_sum - dragged_ae_sum) <= 1000.0
 
         with context('min'):
-            with it('Performs a min operation through float values of specified magnitude on curve'):
+            with it('performs a min operation through float values of specified magnitude on curve'):
                 data_path = './spec/data/'
                 with open(data_path + 'demo_ac_curve.json') as fp:
                     curve_all = json.load(fp, object_hook=datetime_parser)
@@ -640,6 +640,74 @@ with description('PowerProfile Manipulation'):
                     raise_error(ValueError, 'ERROR: [magn] is not a valid parameter, given magn: invalid_magn')
                 )
 
+        with context('get_n_rows'):
+            with it('performs a query and gets the newest row if repeated'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                max_latest_ae = powpro.get_n_rows(['ae'], 'last', 1)
+                max_first_ae = powpro.get_n_rows(['ae'], 'first', 1)
+
+                latest_date = powpro.convert_numpydate_to_datetime(max_latest_ae['timestamp'].values[0])
+                first_date = powpro.convert_numpydate_to_datetime(max_first_ae['timestamp'].values[0])
+                expect(latest_date > first_date).to(equal(True))
+
+            with it('performs a query and gets the oldest row if repeated'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                max_latest_ae = powpro.get_n_rows(['ae'], 'last', 1, 'asc')
+                max_first_ae = powpro.get_n_rows(['ae'], 'first', 1, 'asc')
+
+                latest_date = powpro.convert_numpydate_to_datetime(max_latest_ae['timestamp'].values[0])
+                first_date = powpro.convert_numpydate_to_datetime(max_first_ae['timestamp'].values[0])
+                expect(latest_date > first_date).to(equal(True))
+
+            with it('returns error if keep is invalid'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                expect(lambda: powpro.get_n_rows(['ae'], 'invalid_keep', 1, 'asc')).to(
+                    raise_error(ValueError, "ERROR: [keep] is not a valid parameter, given keep: invalid_keep."
+                             "Valid keep options are 'first', 'last, 'all'")
+                )
+
+            with it('returns error if order is invalid'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                expect(lambda: powpro.get_n_rows(['ae'], 'first', 1, 'invalid_order')).to(
+                    raise_error(ValueError, "ERROR: [order] is not a valid parameter, given keep: invalid_order."
+                             "Valid keep options are 'asc', 'desc'")
+                )
+
+            with it('returns error if cols type is invalid'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                expect(lambda: powpro.get_n_rows('ae', 'first', 1)).to(
+                    raise_error(TypeError, "ERROR: [cols] has to be a list, given keep: ae.")
+                )
 
 with description('PowerProfile Operators'):
     with before.all:

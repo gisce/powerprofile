@@ -488,10 +488,51 @@ class PowerProfile():
                 res = PowerProfile()
             return res
 
+
+    def get_n_rows(self, cols, keep, n=1, order='desc'):
+        """
+        Returns a new Dataframe with given rows
+        :param cols: List of columns
+        :param n: Number of rows wanted
+        :param keep: Row to keep
+        :param order: If you want min or max value
+        'first' (asc), 'last' (desc), 'all' all rows
+        :return: bool
+        """
+        if order not in ['asc', 'desc']:
+            raise ValueError("ERROR: [order] is not a valid parameter, given keep: {}."
+                             "Valid keep options are 'asc', 'desc'".format(order))
+
+        if keep not in ['first', 'last', 'all']:
+            raise ValueError("ERROR: [keep] is not a valid parameter, given keep: {}."
+                             "Valid keep options are 'first', 'last, 'all'".format(keep))
+
+        if not isinstance(cols, list):
+            raise TypeError("ERROR: [cols] has to be a list, given keep: {}.".format(cols))
+
+        if order == 'asc':
+            return self.curve.nsmallest(n, cols, keep)
+        return self.curve.nlargest(n, cols, keep)
+
     def _check_magn_is_valid(self, magn):
+        """
+        Returns True or ValueError if the magn is not valid
+        :param magn: Magnitude
+        :return: bool
+        """
         if magn in DEFAULT_DATA_FIELDS_NO_FACT:
             return True
         raise ValueError("ERROR: [magn] is not a valid parameter, given magn: {}".format(magn))
+
+    @staticmethod
+    def convert_numpydate_to_datetime(date, to_string=False):
+        import numpy
+        str_date = numpy.datetime_as_string(date, unit='s').replace('T', ' ')
+
+        if to_string:
+            return str_date
+
+        return datetime.strptime(str_date, '%Y-%m-%d %H:%M:%S')
 
 
 class PowerProfileQh(PowerProfile):
