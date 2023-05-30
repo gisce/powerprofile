@@ -497,7 +497,7 @@ class PowerProfile():
         :param keep: Row to keep
         :param order: If you want min or max value
         'first' (asc), 'last' (desc), 'all' all rows
-        :return: bool
+        :return: Dataframe
         """
         if order not in ['asc', 'desc']:
             raise ValueError("ERROR: [order] is not a valid parameter, given keep: {}."
