@@ -439,6 +439,9 @@ class PowerProfile():
 
             new.curve.rename(columns=cols, inplace=True)
 
+            new_data_fields = [x for x in final_trans_cols if x != self.datetime_field]
+            new.data_fields = new_data_fields
+
         return new
 
     # Dump data
