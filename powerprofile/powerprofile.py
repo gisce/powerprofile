@@ -286,11 +286,11 @@ class PowerProfile():
             draggers = Dragger()
             # Dragg field is specified and exists in curve
             if drag_key is not None and drag_key in self.curve:
-                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6),
+                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / (1000 / row.get('magn', 1)), 6),
                                                                               key=row[drag_key]), axis=1)
             else:
-                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6)), axis=1)
-            self.curve[magn] = self.curve.apply(lambda row: row[magn] * 1000, axis=1)
+                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / (1000 / row.get('magn', 1)), 6)), axis=1)
+            self.curve[magn] = self.curve.apply(lambda row: row[magn] * (1000 / row.get('magn', 1)), axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """
