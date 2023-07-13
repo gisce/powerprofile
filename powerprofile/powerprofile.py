@@ -24,6 +24,8 @@ DEFAULT_DATA_FIELDS = DEFAULT_DATA_FIELDS_NO_FACT + [f + '_fact' for f in DEFAUL
 
 class PowerProfile():
 
+    SAMPLING_INTERVAL = 3600
+
     def __init__(self, datetime_field='timestamp', data_fields=DEFAULT_DATA_FIELDS):
 
         self.start = None
@@ -74,6 +76,37 @@ class PowerProfile():
                     auto_data_fields.append(field)
             self.data_fields = auto_data_fields
 
+    def fill(self, default_data, start, end):
+        '''
+        Fills curve with default data
+        :param data: dict with field and default value, ie: {'ai': 0, 'ae': 0, 'cch_bruta': False}
+        '''
+        if not isinstance(default_data, dict):
+            raise TypeError("ERROR: [default_data] must be a dict")
+
+        if not isinstance(start, datetime) or not start.tzinfo:
+            raise TypeError("ERROR: [start] must be a localized datetime")
+
+        if not isinstance(end, datetime) or not end.tzinfo:
+            raise TypeError("ERROR: [end] must be a localized datetime")
+
+        self.start = start
+        self.end = end
+
+        data = []
+        sample_counter = 0
+        ts = copy.copy(self.start)
+        while self.end > ts:
+            append_data = {}
+            ts = TIMEZONE.normalize(self.start + timedelta(seconds=sample_counter * self.SAMPLING_INTERVAL))
+            append_data[self.datetime_field] = ts
+            append_data.update(default_data)
+            data.append(append_data)
+
+            sample_counter += 1
+
+        self.load(data)
+
     def ensure_localized_dt(self, row):
         dt = row[self.datetime_field]
         if dt.tzinfo is None:
@@ -88,10 +121,21 @@ class PowerProfile():
         return data
 
     @property
-    def hours(self):
-        return self.curve.count()[self.datetime_field]
+    def samples(self):
+        if self.SAMPLING_INTERVAL == 900:
+            return self.quart_hours
+        else:
+            return self.hours
 
-    def is_complete(self):
+    @property
+    def hours(self):
+        return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 3600))
+
+    @property
+    def quart_hours(self):
+        return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 900))
+
+    def is_complete_counter(self, counter):
         ''' Checks completeness of curve '''
         start = self.start
         if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
@@ -100,11 +144,11 @@ class PowerProfile():
         if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
             end = TIMEZONE.localize(self.end)
 
-        hours = ((end - start).total_seconds() + 3600) / 3600
-        if self.hours != hours:
+        samples = ((end - start).total_seconds() + self.SAMPLING_INTERVAL) / self.SAMPLING_INTERVAL
+        if counter != samples:
             ids = set(self.curve[self.datetime_field])
             dt = start
-            df_hours = set([TIMEZONE.normalize(dt + timedelta(hours=x)) for x in range(0, int(hours))])
+            df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
             not_found = sorted(list(df_hours - ids))
             if len(not_found):
                 first_not_found = not_found[0]
@@ -112,6 +156,9 @@ class PowerProfile():
                 first_not_found = dt
             return False, first_not_found
         return True, None
+
+    def is_complete(self):
+        return self.is_complete_counter(self.hours)
 
     def is_fixed(self, fields=['cch_fact', 'valid']):
         """
@@ -128,14 +175,17 @@ class PowerProfile():
                 raise PowerProfileMissingField(field)
         return True
 
-    def has_duplicates(self):
+    def has_duplicates_counter(self, counter):
         ''' Checks for duplicated hours'''
         uniques = len(self.curve[self.datetime_field].unique())
-        if uniques != self.hours:
+        if uniques != counter:
             ids = self.curve[self.datetime_field]
             first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field].min()
             return True, first_occurrence
         return False, None
+
+    def has_duplicates(self):
+        return self.has_duplicates_counter(self.hours)
 
     def is_positive(self, fields=DEFAULT_DATA_FIELDS):
         """
@@ -173,9 +223,9 @@ class PowerProfile():
             res = self.curve.iloc[item]
             #interger slice [a:b]
             # test bounds
-            self.curve.iloc[item.start]
-            self.curve.iloc[item.stop]
-            powpro = PowerProfile()
+            self.curve.iloc[item.start or 0]  # Python 3 returns None istead of 0 when empty
+            self.curve.iloc[item.stop or -1]  # Python 3 returns None instead of -1 when empty
+            powpro = self.__class__()
             powpro.curve = res
             powpro.start = res.iloc[0][self.datetime_field]
             powpro.end = res.iloc[-1][self.datetime_field]
@@ -267,11 +317,11 @@ class PowerProfile():
             draggers = Dragger()
             # Dragg field is specified and exists in curve
             if drag_key is not None and drag_key in self.curve:
-                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6),
+                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / (1000 / row.get('magn', 1)), 6),
                                                                               key=row[drag_key]), axis=1)
             else:
-                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / 1000, 6)), axis=1)
-            self.curve[magn] = self.curve.apply(lambda row: row[magn] * 1000, axis=1)
+                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / (1000 / row.get('magn', 1)), 6)), axis=1)
+            self.curve[magn] = self.curve.apply(lambda row: row[magn] * (1000 / row.get('magn', 1)), axis=1)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """
@@ -289,6 +339,18 @@ class PowerProfile():
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: min(row[magn1], row[magn2]), axis=1)
 
     # Operators
+    def check_data_fields(self, right):
+        if len(self.data_fields) != len(right.data_fields):
+            raise PowerProfileIncompatible('ERROR: right data fields "{}" are not the same: {}'.format(
+                self.data_fields, right.data_fields)
+            )
+        for field in self.data_fields:
+            if field not in right.data_fields:
+                raise PowerProfileIncompatible('ERROR: right profile does not contains field "{}": {}'.format(
+                    field, right.data_fields)
+                )
+        return True
+
     # Binary
     def similar(self, right, data_fields=False):
         """Ensures two PowerProfiles are "compatible", that is:
@@ -307,15 +369,8 @@ class PowerProfile():
                     field, getattr(right, field), getattr(self, field)))
 
         if data_fields:
-            if len(self.data_fields) != len(right.data_fields):
-                raise PowerProfileIncompatible('ERROR: right data fields "{}" are not the same: {}'.format(
-                    self.data_fields, right.data_fields)
-                )
-            for field in self.data_fields:
-                if field not in right.data_fields:
-                    raise PowerProfileIncompatible('ERROR: right profile does not contains field "{}": {}'.format(
-                        field, right.data_fields)
-                    )
+            self.check_data_fields(right)
+
         return True
 
     def __operate(self, right, op='mul'):
@@ -388,13 +443,43 @@ class PowerProfile():
 
         return new
 
+    def append(self, new_profile):
+        '''Appends data to to current curve. Usefull to fill gaps or strech the profile'''
+        if not isinstance(new_profile, PowerProfile):
+            raise TypeError('ERROR append: Appended Profile must be a PowerProfile')
+
+        #if type(self) is not type(new_profile):
+        if self.SAMPLING_INTERVAL != new_profile.SAMPLING_INTERVAL:
+            raise PowerProfileIncompatible(
+                "ERROR: Can't append profiles of different profile type: {} != {}".format(self.__class__, new_profile.__class__)
+            )
+
+        if self.datetime_field != new_profile.datetime_field:
+            raise PowerProfileIncompatible(
+                "ERROR: Can't append profiles of different datetime field: {} != {}".format(
+                    self.datetime_field , new_profile.datetime_field
+                )
+            )
+
+        self.check_data_fields(new_profile)
+
+        new_curve = self.copy()
+
+        new_curve.curve = pd.concat([new_curve.curve, new_profile.curve])
+        new_curve.curve.sort_values(by=new_curve.datetime_field, inplace=True)
+        new_curve.curve.reset_index(inplace=True, drop=True)
+        new_curve.start = new_curve.curve[new_curve.datetime_field].min()
+        new_curve.end = new_curve.curve[new_curve.datetime_field].max()
+
+        return new_curve
+
     # Unary
     def copy(self):
         """
         Returns an identical copy of the same profile
         :return: PowerProfile Object
         """
-        new = PowerProfile(self.datetime_field)
+        new = self.__class__(self.datetime_field)
         new.start = self.start
         new.end = self.end
         new.curve = copy.copy(self.curve)
@@ -439,8 +524,10 @@ class PowerProfile():
 
             new.curve.rename(columns=cols, inplace=True)
 
-            new_data_fields = [x for x in final_trans_cols if x != self.datetime_field]
-            new.data_fields = new_data_fields
+            final_cols = final_trans_cols[:]
+
+        new_data_fields = [x for x in final_cols if x != self.datetime_field]
+        new.data_fields = new_data_fields
 
         return new
 
@@ -486,10 +573,10 @@ class PowerProfile():
             if last_hour >= self.start:
                 data = self.curve[self.curve[self.datetime_field] <= last_hour]
                 data = data.to_dict('records')
-                res = PowerProfile()
+                res = self.__class__()
                 res.load(data, datetime_field=self.datetime_field)
             else:
-                res = PowerProfile()
+                res = self.__class__()
             return res
 
 
@@ -541,31 +628,27 @@ class PowerProfile():
 
 class PowerProfileQh(PowerProfile):
 
-    @property
-    def hours(self):
-        return self.curve.count()[self.datetime_field] / 4.0
-
-    @property
-    def quart_hours(self):
-        return self.curve.count()[self.datetime_field]
+    SAMPLING_INTERVAL = 900
 
     def has_duplicates(self):
-        ''' Checks for duplicated hours'''
-        uniques = len(self.curve[self.datetime_field].unique())
-        if uniques != self.quart_hours:
-            return True
-        return False
+        return self.has_duplicates_counter(self.quart_hours)
 
     def is_complete(self):
-        ''' Checks completeness of curve '''
-        start = self.start
-        if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
-            start = TIMEZONE.localize(self.start)
-        end = self.end
-        if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
-            end = TIMEZONE.localize(self.end)
+        return self.is_complete_counter(self.quart_hours)
 
-        quart_hours = (((end - start)).total_seconds() + 900) / 900
-        if self.quart_hours != quart_hours:
-            return False
-        return True
+    def get_hourly_profile(self):
+        '''
+        Returns a Powerprofile aggregating quarter-hour curve by hour
+        :return:
+        New Powerprofile
+        '''
+
+        new_curve = PowerProfile()
+
+        new_curve.curve = self.curve.resample('1H', closed='right', label='right', on=self.datetime_field).sum()
+        new_curve.curve.sort_values(by=new_curve.datetime_field, inplace=True)
+        new_curve.curve = new_curve.curve.reset_index()
+        new_curve.start = new_curve.curve[new_curve.datetime_field].min()
+        new_curve.end = new_curve.curve[new_curve.datetime_field].max()
+
+        return new_curve
