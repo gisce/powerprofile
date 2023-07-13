@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from expects.testing import failure
 from expects import *
-from powerprofile.powerprofile import PowerProfile, DEFAULT_DATA_FIELDS
+from powerprofile.powerprofile import PowerProfile, PowerProfileQh, DEFAULT_DATA_FIELDS
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse as parse_datetime
@@ -172,6 +172,48 @@ with description('PowerProfile class'):
                 powerprofile.load(self.curve)
                 for idx, hour in powerprofile.curve.iterrows():
                     assert hour[powerprofile.datetime_field].tzinfo is not None
+
+    with context('fill function'):
+        with context('with bad data'):
+            with it('raises TypeError exception'):
+                powerprofile = PowerProfile()
+
+                expect(lambda: powerprofile.fill(['a', 'b'], datetime(2022, 8, 1, 1, 0, 0), datetime(2022, 9, 1, 0, 0, 0))).to(
+                    raise_error(TypeError, "ERROR: [default_data] must be a dict")
+                )
+
+                expect(lambda: powerprofile.fill(
+                    {'ae': 1.0,  "ai": 13.0}, '2020-01-31 10:00:00', datetime(2022, 9, 1, 0, 0, 0))).to(
+                    raise_error(TypeError, "ERROR: [start] must be a localized datetime")
+                )
+                expect(lambda: powerprofile.fill(
+                    {'ae': 1.0,  "ai": 13.0}, datetime(2022, 9, 1, 0, 0, 0), datetime(2022, 9, 1, 0, 0, 0))).to(
+                    raise_error(TypeError, "ERROR: [start] must be a localized datetime")
+                )
+
+                expect(lambda: powerprofile.fill(
+                    {'ae': 1.0,  "ai": 13.0}, LOCAL_TZ.localize(datetime(2022, 8, 1, 1, 0, 0)), '2020-01-31 10:00:00')).to(
+                    raise_error(TypeError, "ERROR: [end] must be a localized datetime")
+                )
+                expect(lambda: powerprofile.fill(
+                    {'ae': 1.0,  "ai": 13.0}, LOCAL_TZ.localize(datetime(2022, 9, 1, 0, 0, 0)), datetime(2022, 9, 1, 0, 0, 0))).to(
+                    raise_error(TypeError, "ERROR: [end] must be a localized datetime")
+                )
+
+        with context('correctly'):
+            with it('with correct params'):
+                powerprofile = PowerProfile()
+
+                default_data = {'name': '12345678',  'cch_bruta': True, 'bc': 0x06}
+                start = LOCAL_TZ.localize(datetime(2022, 8, 1, 1, 0, 0))
+                end = LOCAL_TZ.localize(datetime(2022, 9, 1, 0, 0, 0))
+                powerprofile.fill(default_data, start, end)
+
+                powerprofile.check()
+                expect(powerprofile.hours).to(equal(744))
+                for field, value in default_data.items():
+                    expect(powerprofile[0][field]).to(equal(value))
+                    expect(powerprofile[-1][field]).to(equal(value))
 
     with context('dump function'):
         with before.all:
@@ -871,6 +913,66 @@ with description('PowerProfile Operators'):
 
                 for field in expected_cols:
                     expect(first_register.keys()).to(contain(field))
+
+        ## End Extend tests
+
+        with context('Append'):
+            with it('Raises Type error if not powerprofile param'):
+                curve_a = PowerProfile('utc_datetime')
+                curve_a.load(self.erp_curve['curve'])
+
+                expect(
+                    lambda: curve_a.append(self.erp_curve['curve'])
+                ).to(raise_error(TypeError, 'ERROR append: Appended Profile must be a PowerProfile'))
+
+            with context('Tests profiles and'):
+                with before.all:
+                    self.curve_a = PowerProfile('utc_datetime')
+                    self.curve_a.load(self.erp_curve['curve'])
+
+                with it('raises a PowerProfileIncompatible with different profile type'):
+                    curve_b = PowerProfileQh('utc_datetime')
+                    curve_b.load(self.erp_curve['curve'])
+
+                    try:
+                        self.curve_a.append(curve_b)
+                    except Exception as e:
+                        expect(str(e)).to(contain('different profile type'))
+
+                with it('raises a PowerProfileIncompatible with different datetime field'):
+                    curve_b = PowerProfile('local_datetime')
+                    curve_b.load(self.erp_curve['curve'])
+
+                    try:
+                        self.curve_a.append(curve_b)
+                    except Exception as e:
+                        expect(str(e)).to(contain('datetime field'))
+
+                with it('raises a PowerProfileIncompatible with different fields'):
+                    curve_b = PowerProfile('utc_datetime')
+                    curve_b.load(self.erp_curve['curve'])
+                    curve_c = curve_b.extract(['ai', 'ae'])
+
+                    try:
+                        self.curve_a.append(curve_c)
+                    except PowerProfileIncompatible as e:
+                        expect(str(e)).to(contain('ai_fact'))
+
+            with it('returns a new power profile with both data'):
+                curve_a = PowerProfile('utc_datetime')
+                curve_a.load(self.erp_curve['curve'])
+
+                curve_b = PowerProfile('utc_datetime')
+                curve_b.load(self.erp_curve['curve'])
+
+                curve_c = curve_a.append(curve_b)
+
+                expect(curve_a.hours * 2).to(equal(curve_c.hours))
+
+                expect(curve_c.start).to(equal(curve_a.start))
+                expect(curve_c.end).to(equal(curve_b.end))
+
+        ## End Append tests
 
         with context('Arithmetic'):
             with before.all:
