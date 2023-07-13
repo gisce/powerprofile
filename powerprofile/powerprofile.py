@@ -76,6 +76,37 @@ class PowerProfile():
                     auto_data_fields.append(field)
             self.data_fields = auto_data_fields
 
+    def fill(self, default_data, start, end):
+        '''
+        Fills curve with default data
+        :param data: dict with field and default value, ie: {'ai': 0, 'ae': 0, 'cch_bruta': False}
+        '''
+        if not isinstance(default_data, dict):
+            raise TypeError("ERROR: [default_data] must be a dict")
+
+        if not isinstance(start, datetime) or not start.tzinfo:
+            raise TypeError("ERROR: [start] must be a localized datetime")
+
+        if not isinstance(end, datetime) or not end.tzinfo:
+            raise TypeError("ERROR: [end] must be a localized datetime")
+
+        self.start = start
+        self.end = end
+
+        data = []
+        sample_counter = 0
+        ts = copy.copy(self.start)
+        while self.end > ts:
+            append_data = {}
+            ts = TIMEZONE.normalize(self.start + timedelta(seconds=sample_counter * self.SAMPLING_INTERVAL))
+            append_data[self.datetime_field] = ts
+            append_data.update(default_data)
+            data.append(append_data)
+
+            sample_counter += 1
+
+        self.load(data)
+
     def ensure_localized_dt(self, row):
         dt = row[self.datetime_field]
         if dt.tzinfo is None:
