@@ -223,8 +223,8 @@ class PowerProfile():
             res = self.curve.iloc[item]
             #interger slice [a:b]
             # test bounds
-            self.curve.iloc[item.start]
-            self.curve.iloc[item.stop]
+            self.curve.iloc[item.start or 0]  # Python 3 returns None istead of 0 when empty
+            self.curve.iloc[item.stop or -1]  # Python 3 returns None instead of -1 when empty
             powpro = self.__class__()
             powpro.curve = res
             powpro.start = res.iloc[0][self.datetime_field]
