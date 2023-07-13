@@ -194,7 +194,7 @@ class PowerProfile():
             # test bounds
             self.curve.iloc[item.start]
             self.curve.iloc[item.stop]
-            powpro = PowerProfile()
+            powpro = self.__class__()
             powpro.curve = res
             powpro.start = res.iloc[0][self.datetime_field]
             powpro.end = res.iloc[-1][self.datetime_field]
@@ -413,7 +413,7 @@ class PowerProfile():
         Returns an identical copy of the same profile
         :return: PowerProfile Object
         """
-        new = PowerProfile(self.datetime_field)
+        new = self.__class__(self.datetime_field)
         new.start = self.start
         new.end = self.end
         new.curve = copy.copy(self.curve)
@@ -505,10 +505,10 @@ class PowerProfile():
             if last_hour >= self.start:
                 data = self.curve[self.curve[self.datetime_field] <= last_hour]
                 data = data.to_dict('records')
-                res = PowerProfile()
+                res = self.__class__()
                 res.load(data, datetime_field=self.datetime_field)
             else:
-                res = PowerProfile()
+                res = self.__class__()
             return res
 
 
