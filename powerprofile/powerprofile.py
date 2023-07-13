@@ -443,6 +443,36 @@ class PowerProfile():
 
         return new
 
+    def append(self, new_profile):
+        '''Appends data to to current curve. Usefull to fill gaps or strech the profile'''
+        if not isinstance(new_profile, PowerProfile):
+            raise TypeError('ERROR append: Appended Profile must be a PowerProfile')
+
+        #if type(self) is not type(new_profile):
+        if self.SAMPLING_INTERVAL != new_profile.SAMPLING_INTERVAL:
+            raise PowerProfileIncompatible(
+                "ERROR: Can't append profiles of different profile type: {} != {}".format(self.__class__, new_profile.__class__)
+            )
+
+        if self.datetime_field != new_profile.datetime_field:
+            raise PowerProfileIncompatible(
+                "ERROR: Can't append profiles of different datetime field: {} != {}".format(
+                    self.datetime_field , new_profile.datetime_field
+                )
+            )
+
+        self.check_data_fields(new_profile)
+
+        new_curve = self.copy()
+
+        new_curve.curve = pd.concat([new_curve.curve, new_profile.curve])
+        new_curve.curve.sort_values(by=new_curve.datetime_field, inplace=True)
+        new_curve.curve.reset_index(inplace=True, drop=True)
+        new_curve.start = new_curve.curve[new_curve.datetime_field].min()
+        new_curve.end = new_curve.curve[new_curve.datetime_field].max()
+
+        return new_curve
+
     # Unary
     def copy(self):
         """
