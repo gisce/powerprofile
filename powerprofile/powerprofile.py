@@ -339,6 +339,18 @@ class PowerProfile():
         self.curve[magn1 + sufix] = self.curve.apply(lambda row: min(row[magn1], row[magn2]), axis=1)
 
     # Operators
+    def check_data_fields(self, right):
+        if len(self.data_fields) != len(right.data_fields):
+            raise PowerProfileIncompatible('ERROR: right data fields "{}" are not the same: {}'.format(
+                self.data_fields, right.data_fields)
+            )
+        for field in self.data_fields:
+            if field not in right.data_fields:
+                raise PowerProfileIncompatible('ERROR: right profile does not contains field "{}": {}'.format(
+                    field, right.data_fields)
+                )
+        return True
+
     # Binary
     def similar(self, right, data_fields=False):
         """Ensures two PowerProfiles are "compatible", that is:
@@ -357,15 +369,8 @@ class PowerProfile():
                     field, getattr(right, field), getattr(self, field)))
 
         if data_fields:
-            if len(self.data_fields) != len(right.data_fields):
-                raise PowerProfileIncompatible('ERROR: right data fields "{}" are not the same: {}'.format(
-                    self.data_fields, right.data_fields)
-                )
-            for field in self.data_fields:
-                if field not in right.data_fields:
-                    raise PowerProfileIncompatible('ERROR: right profile does not contains field "{}": {}'.format(
-                        field, right.data_fields)
-                    )
+            self.check_data_fields(right)
+
         return True
 
     def __operate(self, right, op='mul'):
