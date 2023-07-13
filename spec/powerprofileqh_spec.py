@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from expects.testing import failure
 from expects import *
-from powerprofile.powerprofile import PowerProfileQh, DEFAULT_DATA_FIELDS
+from powerprofile.powerprofile import PowerProfile, PowerProfileQh, DEFAULT_DATA_FIELDS
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse as parse_datetime
@@ -163,3 +163,31 @@ with description('PowerProfileQh class'):
                 erp_curve = powpro.dump()
 
                 expect(erp_curve).to(equal(self.erp_curve))
+
+    with description('PowerProfileQH Operators'):
+        with before.all:
+            self.curve = []
+            self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 0, 15, 0))
+            self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
+            for hours in range(0, 24):
+                for minutes in [0, 15, 30, 45]:
+                    self.curve.append({'timestamp': self.start + timedelta(minutes=hours * 60 + minutes),
+                                       'value': 100 + hours * 10 + minutes})
+            self.powpro = PowerProfileQh()
+            self.powpro.load(self.curve)
+
+        with description('Unary Operator'):
+            with context('get_hourly_profile'):
+                with it('returns a PowerProfile instance'):
+                    pph = self.powpro.get_hourly_profile()
+
+                    expect(pph).to(be_an(PowerProfile))
+                    expect(pph).not_to(be_an(PowerProfileQh))
+
+                    pph.check()
+                    expect(pph.start).to(equal(LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))))
+                    expect(pph.end).to(equal(self.powpro.end))
+                    expect(pph.sum(['value'])).to(equal(self.powpro.sum(['value'])))
+                    expect(pph.hours).to(equal(24))
+                    expected_value = sum([x['value'] for x in self.powpro[:4]])
+                    expect(pph[0]['value']).to(equal(expected_value))
