@@ -24,6 +24,8 @@ DEFAULT_DATA_FIELDS = DEFAULT_DATA_FIELDS_NO_FACT + [f + '_fact' for f in DEFAUL
 
 class PowerProfile():
 
+    SAMPLING_INTERVAL = 3600
+
     def __init__(self, datetime_field='timestamp', data_fields=DEFAULT_DATA_FIELDS):
 
         self.start = None
@@ -88,10 +90,21 @@ class PowerProfile():
         return data
 
     @property
-    def hours(self):
-        return self.curve.count()[self.datetime_field]
+    def samples(self):
+        if self.SAMPLING_INTERVAL == 900:
+            return self.quart_hours
+        else:
+            return self.hours
 
-    def is_complete(self):
+    @property
+    def hours(self):
+        return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 3600))
+
+    @property
+    def quart_hours(self):
+        return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 900))
+
+    def is_complete_counter(self, counter):
         ''' Checks completeness of curve '''
         start = self.start
         if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
@@ -100,11 +113,11 @@ class PowerProfile():
         if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
             end = TIMEZONE.localize(self.end)
 
-        hours = ((end - start).total_seconds() + 3600) / 3600
-        if self.hours != hours:
+        samples = ((end - start).total_seconds() + self.SAMPLING_INTERVAL) / self.SAMPLING_INTERVAL
+        if counter != samples:
             ids = set(self.curve[self.datetime_field])
             dt = start
-            df_hours = set([TIMEZONE.normalize(dt + timedelta(hours=x)) for x in range(0, int(hours))])
+            df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
             not_found = sorted(list(df_hours - ids))
             if len(not_found):
                 first_not_found = not_found[0]
@@ -112,6 +125,9 @@ class PowerProfile():
                 first_not_found = dt
             return False, first_not_found
         return True, None
+
+    def is_complete(self):
+        return self.is_complete_counter(self.hours)
 
     def is_fixed(self, fields=['cch_fact', 'valid']):
         """
@@ -128,14 +144,17 @@ class PowerProfile():
                 raise PowerProfileMissingField(field)
         return True
 
-    def has_duplicates(self):
+    def has_duplicates_counter(self, counter):
         ''' Checks for duplicated hours'''
         uniques = len(self.curve[self.datetime_field].unique())
-        if uniques != self.hours:
+        if uniques != counter:
             ids = self.curve[self.datetime_field]
             first_occurrence = self.curve[ids.isin(ids[ids.duplicated()])][self.datetime_field].min()
             return True, first_occurrence
         return False, None
+
+    def has_duplicates(self):
+        return self.has_duplicates_counter(self.hours)
 
     def is_positive(self, fields=DEFAULT_DATA_FIELDS):
         """
@@ -541,31 +560,27 @@ class PowerProfile():
 
 class PowerProfileQh(PowerProfile):
 
-    @property
-    def hours(self):
-        return self.curve.count()[self.datetime_field] / 4.0
-
-    @property
-    def quart_hours(self):
-        return self.curve.count()[self.datetime_field]
+    SAMPLING_INTERVAL = 900
 
     def has_duplicates(self):
-        ''' Checks for duplicated hours'''
-        uniques = len(self.curve[self.datetime_field].unique())
-        if uniques != self.quart_hours:
-            return True
-        return False
+        return self.has_duplicates_counter(self.quart_hours)
 
     def is_complete(self):
-        ''' Checks completeness of curve '''
-        start = self.start
-        if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
-            start = TIMEZONE.localize(self.start)
-        end = self.end
-        if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
-            end = TIMEZONE.localize(self.end)
+        return self.is_complete_counter(self.quart_hours)
 
-        quart_hours = (((end - start)).total_seconds() + 900) / 900
-        if self.quart_hours != quart_hours:
-            return False
-        return True
+    def get_hourly_profile(self):
+        '''
+        Returns a Powerprofile aggregating quarter-hour curve by hour
+        :return:
+        New Powerprofile
+        '''
+
+        new_curve = PowerProfile()
+
+        new_curve.curve = self.curve.resample('1H', closed='right', label='right', on=self.datetime_field).sum()
+        new_curve.curve.sort_values(by=new_curve.datetime_field, inplace=True)
+        new_curve.curve = new_curve.curve.reset_index()
+        new_curve.start = new_curve.curve[new_curve.datetime_field].min()
+        new_curve.end = new_curve.curve[new_curve.datetime_field].max()
+
+        return new_curve
