@@ -189,5 +189,7 @@ with description('PowerProfileQh class'):
                     expect(pph.end).to(equal(self.powpro.end))
                     expect(pph.sum(['value'])).to(equal(self.powpro.sum(['value'])))
                     expect(pph.hours).to(equal(24))
-                    expected_value = sum([x['value'] for x in self.powpro[:4]])
+                    expected_value = 0
+                    for x in range(4):
+                        expected_value += self.powpro[x]['value']
                     expect(pph[0]['value']).to(equal(expected_value))
