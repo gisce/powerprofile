@@ -275,7 +275,7 @@ class PowerProfile():
         :return: avg magnitude value
         """
         if self._check_magn_is_valid(magn):
-            return self.curve[magn].agg({magn: 'mean'})[magn]
+            return self.curve[magn].mean()
 
     # Transformations
     def Balance(self, magn1='ai', magn2='ae', sufix='bal'):
