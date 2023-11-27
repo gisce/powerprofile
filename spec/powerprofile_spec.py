@@ -449,6 +449,45 @@ with description('PowerProfile class'):
                 pp = self.powpro_subcurve_testing3.get_complete_daily_subcurve()
                 expect((pp.curve)).to(equal(None))
 
+        with context('complete season curve'):
+            with before.all:
+                self.curve_season_testing = []
+                self.start = LOCAL_TZ.localize(datetime(2020, 1, 1, 1, 0, 0))
+                self.end = LOCAL_TZ.localize(datetime(2022, 1, 1, 0, 0, 0))
+
+                num_hours = int((self.end - self.start).total_seconds() / 3600) + 1
+                for hours in range(0, num_hours):
+                    self.curve_season_testing.append(
+                        {'timestamp': LOCAL_TZ.normalize(self.start + timedelta(hours=hours)), 'value': 100 + hours}
+                    )
+                self.powpro_season_testing = PowerProfile(datetime_field='timestamp')
+                self.powpro_season_testing.load(self.curve_season_testing)
+
+                self.total_registers = self.powpro_season_testing.samples
+
+                winter_pp = self.powpro_season_testing.get_winter_curve()
+                # Abril no és hivern
+                expect(LOCAL_TZ.localize(datetime(2020, 4, 1, 0)) not in winter_pp.curve.timestamp).to(be_true)
+                # Novembre és hivern
+                expect(LOCAL_TZ.localize(datetime(2020, 11, 1, 0)) not in winter_pp.curve.timestamp).to(be_true)
+
+                self.winter_registers = winter_pp.samples
+                expect(self.winter_registers).to(be_below(self.total_registers))
+
+                summer_pp = self.powpro_season_testing.get_summer_curve()
+                # Abril és estiu"
+                expect(LOCAL_TZ.localize(datetime(2020, 4, 1, 0)) in summer_pp.curve.timestamp).to(be_true)
+                # Novembre no és estiu
+                expect(LOCAL_TZ.localize(datetime(2020, 11, 1, 0)) not in summer_pp.curve.timestamp).to(be_true)
+
+                self.summer_registers = summer_pp.samples
+                expect(self.summer_registers).to(be_below(self.total_registers))
+
+
+                expect(self.summer_registers + self.winter_registers).to(be_equal(self.total_registers))
+
+
+
     with context('accessing data'):
         with before.all:
             self.curve = []
