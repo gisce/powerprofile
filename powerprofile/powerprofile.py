@@ -268,6 +268,15 @@ class PowerProfile():
         if self._check_magn_is_valid(magn):
             return self.curve[magn].min()
 
+    def avg(self, magn):
+        """
+        Returns avg value of given magnitude of the curve
+        :param magn: magnitude value
+        :return: avg magnitude value
+        """
+        if self._check_magn_is_valid(magn):
+            return self.curve[magn].agg({magn: 'mean'})[magn]
+
     # Transformations
     def Balance(self, magn1='ai', magn2='ae', sufix='bal'):
         """
