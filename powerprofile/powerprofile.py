@@ -540,6 +540,30 @@ class PowerProfile():
 
         return new
 
+    def get_summer_curve(self):
+        return self.get_season_curve(dst=True)
+
+    def get_winter_curve(self):
+        return self.get_season_curve(dst=False)
+
+    def get_season_curve(self, dst=True):
+        """
+
+        :param dst:
+        :return:
+        """
+        df = self.curve.copy()
+        df['dst'] = df.apply(
+            lambda row: True if TIMEZONE.normalize(row[self.datetime_field]).dst() else False, axis=1
+        )
+        df = df[df['dst'] == dst]
+
+        res = self.__class__(datetime_field=self.datetime_field)
+        data = df.to_dict('records')
+        res.load(data)
+
+        return res
+
     # Dump data
     def to_csv(self, cols=None, header=True):
         """
