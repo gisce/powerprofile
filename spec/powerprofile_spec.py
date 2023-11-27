@@ -682,6 +682,39 @@ with description('PowerProfile Manipulation'):
                     raise_error(ValueError, 'ERROR: [magn] is not a valid parameter, given magn: invalid_magn')
                 )
 
+        with context('avg'):
+            with it('performs a avg operation through float values of specified magnitude on curve'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                avg_ai = powpro.avg('ai')
+                avg_ae = powpro.avg('ae')
+
+                json_sum_ai = sum([cur['ai'] for cur in curve_all['curve']])
+                json_avg_ai = json_sum_ai / len(curve_all['curve'])
+
+                json_sum_ae = sum([cur['ae'] for cur in curve_all['curve']])
+                json_avg_ae = json_sum_ae / len(curve_all['curve'])
+
+                expect(round(avg_ai, 6)).to(equal(round(json_avg_ai, 6)))
+                expect(round(avg_ae, 6)).to(equal(round(json_avg_ae, 6)))
+
+            with it('returns error if magn is invalid'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+
+                expect(lambda: powpro.avg('invalid_magn')).to(
+                    raise_error(ValueError, 'ERROR: [magn] is not a valid parameter, given magn: invalid_magn')
+                )
+
         with context('get_n_rows'):
             with it('performs a query and gets the newest row if repeated'):
                 data_path = './spec/data/'
