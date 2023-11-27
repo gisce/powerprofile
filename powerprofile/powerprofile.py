@@ -548,9 +548,10 @@ class PowerProfile():
 
     def get_season_curve(self, dst=True):
         """
-
-        :param dst:
-        :return:
+        Returns a new partial profile with only the summer registers (dst=True) or the winter registers (false) using
+        DST change time of local timezone
+        :param dst: boolean True(summer) False(winter)
+        :return: new profile
         """
         df = self.curve.copy()
         df['dst'] = df.apply(
