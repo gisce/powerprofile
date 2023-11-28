@@ -314,6 +314,15 @@ with description('PowerProfile class'):
                 expect(self.powpro.is_complete()[1]).to(equal(curve[0]['timestamp']))
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
 
+            with it('returns false when incomplete but duplicated hours complete number of hours'):
+                curve = copy(self.curve[1:])
+                curve.append(curve[-1])
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.is_complete()[0]).to(be_false)
+                expect(self.powpro.is_complete()[1]).to(equal(self.curve[0]['timestamp']))
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
+
         with context('duplicated hours'):
 
             with it('returns true when not duplicates'):

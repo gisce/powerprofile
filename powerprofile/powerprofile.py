@@ -135,6 +135,10 @@ class PowerProfile():
     def quart_hours(self):
         return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 900))
 
+    @property
+    def unique_samples(self):
+        return int(len(self.curve[self.datetime_field].unique()))
+
     def is_complete_counter(self, counter):
         ''' Checks completeness of curve '''
         start = self.start
@@ -145,7 +149,7 @@ class PowerProfile():
             end = TIMEZONE.localize(self.end)
 
         samples = ((end - start).total_seconds() + self.SAMPLING_INTERVAL) / self.SAMPLING_INTERVAL
-        if counter != samples:
+        if counter != samples or counter != self.unique_samples:
             ids = set(self.curve[self.datetime_field])
             dt = start
             df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
