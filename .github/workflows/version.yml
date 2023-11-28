@@ -1,41 +1,58 @@
-name: GISCE_POWERPROFILE_VERION
+name: BUMP Version
 on:
   push:
+    # For copy pase proposes, change this variable
     branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  # For copy pase proposes, change this variable
+  VERSION_FILE: setup.py
+  HOME: /home/ci_repos
+  SCRIPTS_PATH: /home/ci_repos/ci_scripts
+  USER: ci_repos
+
+permissions:
+  actions: write
+  checks: write
+  contents: write
+  deployments: write
+  issues: write
+  pull-requests: write
+  statuses: read
+
 jobs:
-  bump:
-    runs-on: ubuntu-latest
+  bump-version:
+    runs-on: [self-hosted, Keroberos]
     if: ${{ !startsWith(github.event.head_commit.message, 'Bump to v') }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.SSH_PRIVATE }}
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Setup git
+          token: ${{ secrets.PUB_MASTER_PUSH_TOKEN }}
+      - name: Update python packages
         run: |
-          git config --global user.email "devel@gisce.net"
-          git config --global user.name "giscegit"
-      - name: Install python packages
-        run: |
-          pip install bump2version
-          pip install giscemultitools
+          . $SCRIPTS_PATH/load_pyenv.sh
+          pyenv activate bump
+          pip install --upgrade bump2version
+          pip install --upgrade giscemultitools
+
       - name: Get PR info
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_GIT_TOKEN }}
-          WORKSPACE: ${{github.workspace}}
+          GITHUB_TOKEN: ${{ secrets.RO_GH_ACTIONS_TOKEN }}
         run: |
+          . $SCRIPTS_PATH/load_pyenv.sh
+          pyenv activate bump
           echo 'PR_INFO<<EOF' >> $GITHUB_ENV
-          gisce_github get-commits-sha-from-merge-commit --owner gisce --repository powerprofile --sha $GITHUB_SHA >> $GITHUB_ENV
+          gisce_github get-commits-sha-from-merge-commit --owner ${{ github.repository_owner }} --repository ${{ github.event.repository.name }} --sha ${{ github.sha }} >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
-      - name: Retrive info
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_GIT_TOKEN }}
+
+      - name: Bump Version
         run: |
-          eval `ssh-agent -s`
-          ssh-add - <<< '${{ secrets.SSH_PRIVATE }}'
+          . $SCRIPTS_PATH/load_pyenv.sh
+          pyenv activate bump
           pr_labels=$( echo '${{ env.PR_INFO }}' | jq -r '.pullRequest.labels' )
           is_minor=false
           is_major=false
@@ -58,6 +75,8 @@ jobs:
             VERSION_TYPE="patch"
           fi
           if [[ $VERSION_TYPE != false ]]; then
-            bump2version $VERSION_TYPE --tag --commit -m "Bump to v{new_version}" setup.py
+            git config user.name Release Bot
+            git config user.email github-actions@github.com
+            bump2version $VERSION_TYPE --tag --commit -m "Bump to v{new_version}" $VERSION_FILE
             git push origin master --tags
           fi
