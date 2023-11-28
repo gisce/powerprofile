@@ -17,7 +17,7 @@ setup(
     author_email="devel@gisce.net",
     description=("Library to manage power profiles"),
     long_description=readme,
-    long_description_content_type="text/x-markdown",
+    long_description_content_type="text/markdown",
     url="https://github.com/gisce/powerprofile",
     license="GNU Affero General Public License v3",
     install_requires=INSTALL_REQUIRES,
@@ -28,7 +28,7 @@ setup(
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Utilities"
     ],
 )
