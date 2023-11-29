@@ -254,23 +254,35 @@ class PowerProfile():
             res[magn] = totals[magn]
         return res
 
-    def max(self, magn):
+    def max(self, magn, ret='value'):
         """
         Returns max value of given magnitude of the curve
         :param magn: magnitude value
+        :param ret: value or timestamp of maximum
         :return: max magnitude value
         """
         if self._check_magn_is_valid(magn):
-            return self.curve[magn].max()
+            if ret == 'value':
+                return self.curve[magn].max()
+            elif ret == 'timestamp':
+                idx_max = self.curve[magn].idxmax()
+                return self[idx_max][self.datetime_field]
 
-    def min(self, magn):
+    def min(self, magn, ret='value'):
         """
         Returns min value of given magnitude of the curve
         :param magn: magnitude value
+        :param ret: value or timestamp of minimum
         :return: min magnitude value
         """
         if self._check_magn_is_valid(magn):
-            return self.curve[magn].min()
+            if ret == 'value':
+                return self.curve[magn].min()
+            elif ret == 'timestamp':
+                idx_min = self.curve[magn].idxmin()
+                return self[idx_min][self.datetime_field]
+
+            return False
 
     def avg(self, magn):
         """
