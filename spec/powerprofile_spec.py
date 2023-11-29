@@ -680,14 +680,21 @@ with description('PowerProfile Manipulation'):
                 powpro.load(curve_all['curve'], datetime_field='timestamp')
 
                 min_ai = powpro.min('ai')
+                min_ai_timestamp = powpro.min('ai', 'timestamp')
                 min_ae = powpro.min('ae')
+                min_ae_timestamp = powpro.min('ae', 'timestamp')
 
-                json_min_ai = min(curve_all['curve'], key=lambda x:x['ai'])
+                json_min_ai = min(curve_all['curve'], key=lambda x: x['ai'])
                 json_min_ae = min(curve_all['curve'], key=lambda x: x['ae'])
 
                 expect(min_ai).to(equal(json_min_ai['ai']))
+                expect(min_ai_timestamp).to(
+                    equal(LOCAL_TZ.localize(datetime(2022, 2, 1, 11)))
+                )
                 expect(min_ae).to(equal(json_min_ae['ae']))
-
+                expect(min_ae_timestamp).to(
+                    equal(LOCAL_TZ.localize(datetime(2022, 2, 1, 1)))
+                )
             with it('returns error if magn is invalid'):
                 data_path = './spec/data/'
                 with open(data_path + 'demo_ac_curve.json') as fp:
@@ -710,13 +717,22 @@ with description('PowerProfile Manipulation'):
                 powpro.load(curve_all['curve'], datetime_field='timestamp')
 
                 max_ai = powpro.max('ai')
+                max_ai_timestamp = powpro.max('ai', 'timestamp')
                 max_ae = powpro.max('ae')
+                max_ae_timestamp = powpro.max('ae', 'timestamp')
+
 
                 json_max_ai = max(curve_all['curve'], key=lambda x: x['ai'])
                 json_max_ae = max(curve_all['curve'], key=lambda x: x['ae'])
 
                 expect(max_ai).to(equal(json_max_ai['ai']))
+                expect(max_ai_timestamp).to(
+                    equal(LOCAL_TZ.localize(datetime(2022, 2, 12, 23)))
+                )
                 expect(max_ae).to(equal(json_max_ae['ae']))
+                expect(max_ae_timestamp).to(
+                    equal(LOCAL_TZ.localize(datetime(2022, 2, 22, 14)))
+                )
 
             with it('returns error if magn is invalid'):
                 data_path = './spec/data/'
