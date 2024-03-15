@@ -284,8 +284,15 @@ class PowerProfile():
 
             return False
 
-    def min_not_0(self, magn, magn_not_0, ret='value'):
-        curva_not_0 = self.curve[(self.curve[magn_not_0] == 0) & (self.curve[magn] > 0)]
+    def min_magn_0(self, magn, magn_0, ret='value'):
+        """
+        Filtramos la curve para que solo tenga en cuenta valores de 0 sobre la magnitud magn_0 dada
+        :param magn: magnitude value
+        :param magn_0: magnitude value
+        :param ret: value or timestamp of minimum
+        :return: min magnitude value or Timestamp
+        """
+        curva_not_0 = self.curve[(self.curve[magn_0] == 0) & (self.curve[magn] > 0)]
         if self._check_magn_is_valid(magn):
             if ret == 'value':
                 return curva_not_0[magn].min()
@@ -294,7 +301,7 @@ class PowerProfile():
                 return self[idx_min][self.datetime_field]
 
             return False
-        
+
     def avg(self, magn):
         """
         Returns avg value of given magnitude of the curve
