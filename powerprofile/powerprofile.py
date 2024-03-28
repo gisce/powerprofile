@@ -268,42 +268,27 @@ class PowerProfile():
                 idx_max = self.curve[magn].idxmax()
                 return self[idx_max][self.datetime_field]
 
-    def min(self, magn, ret='value'):
+    def min(self, magn, magn_0=None, force_magn_gt_0=False,  ret='value'):
         """
         Returns min value of given magnitude of the curve
         :param magn: magnitude value
+        :param magn_0: magnitude that when specified returns only the min value where **magn_0** is 0.
+        :param force_magn_gt_0: flag that forces **magn** to be > 0
         :param ret: value or timestamp of minimum
         :return: min magnitude value
         """
-        if self._check_magn_is_valid(magn):
-            if ret == 'value':
-                return self.curve[magn].min()
-            elif ret == 'timestamp':
-                idx_min = self.curve[magn].idxmin()
-                return self[idx_min][self.datetime_field]
+        filtered = self.curve.copy()
 
-            return False
-
-    def min_magn_0(self, magn, magn_0=None, ret='value'):
-        """
-        Filtramos la curve para que solo tenga en cuenta valores de 0 sobre la magnitud magn_0 dada
-        Podemos usarla como min con valores > de 0 en la magnitud de cerca
-        :param magn: magnitude value
-        :param magn_0: magnitude value
-        :param ret: value or timestamp of minimum
-        :return: min magnitude value or Timestamp
-        """
-
-        if magn_0 is None:
-            curva_not_0 = self.curve[(self.curve[magn] > 0)]
-        else:
-            curva_not_0 = self.curve[(self.curve[magn_0] == 0) & (self.curve[magn] > 0)]
+        if force_magn_gt_0:
+            filtered = filtered[self.curve[magn] > 0]
+        if magn_0 is not None:
+            filtered = filtered[self.curve[magn_0] == 0]
 
         if self._check_magn_is_valid(magn):
             if ret == 'value':
-                return curva_not_0[magn].min()
+                return filtered[magn].min()
             elif ret == 'timestamp':
-                idx_min = curva_not_0[magn].idxmin()
+                idx_min = filtered[magn].idxmin()
                 return self[idx_min][self.datetime_field]
 
             return False
