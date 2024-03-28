@@ -284,15 +284,21 @@ class PowerProfile():
 
             return False
 
-    def min_magn_0(self, magn, magn_0, ret='value'):
+    def min_magn_0(self, magn, magn_0=None, ret='value'):
         """
         Filtramos la curve para que solo tenga en cuenta valores de 0 sobre la magnitud magn_0 dada
+        Podemos usarla como min con valores > de 0 en la magnitud de cerca
         :param magn: magnitude value
         :param magn_0: magnitude value
         :param ret: value or timestamp of minimum
         :return: min magnitude value or Timestamp
         """
-        curva_not_0 = self.curve[(self.curve[magn_0] == 0) & (self.curve[magn] > 0)]
+
+        if magn_0 is None:
+            curva_not_0 = self.curve[(self.curve[magn] > 0)]
+        else:
+            curva_not_0 = self.curve[(self.curve[magn_0] == 0) & (self.curve[magn] > 0)]
+
         if self._check_magn_is_valid(magn):
             if ret == 'value':
                 return curva_not_0[magn].min()
