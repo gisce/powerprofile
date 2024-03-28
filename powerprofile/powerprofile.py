@@ -693,6 +693,23 @@ class PowerProfile():
 
         return datetime.strptime(str_date, '%Y-%m-%d %H:%M:%S')
 
+    def fill_gaps(self, datetime_from, datetime_to, default_data=None):
+        """
+        Fills the gaps in curve between **date_from** and **date_to** assigning default values specified in
+        **default_data**
+        :param datetime_from: localized start datetime
+        :param datetime_to: localized end datetime
+        :param default_data: dict with field and default value, ie: {'ai': 0, 'ae': 0, 'cch_bruta': False}
+        """
+        if default_data is None:
+            default_data = {'ai': 0.0, 'ae': 0.0, 'r1': 0.0, 'r2': 0.0, 'r3': 0.0, 'r4': 0.0}
+
+        # creem un nou dataFrame amb una corba segons valors 'default_data'
+        pp_fill = PowerProfile()
+        pp_fill.fill(default_data, datetime_from, datetime_to)
+
+        # combinem de les dues curves per omplir els forats
+        self.curve = self.curve.combine_first(pp_fill.curve)
 
 class PowerProfileQh(PowerProfile):
 
@@ -705,11 +722,11 @@ class PowerProfileQh(PowerProfile):
         return self.is_complete_counter(self.quart_hours)
 
     def get_hourly_profile(self):
-        '''
+        """
         Returns a Powerprofile aggregating quarter-hour curve by hour
         :return:
         New Powerprofile
-        '''
+        """
 
         new_curve = PowerProfile()
 
