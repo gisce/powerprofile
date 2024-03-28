@@ -268,7 +268,7 @@ class PowerProfile():
                 idx_max = self.curve[magn].idxmax()
                 return self[idx_max][self.datetime_field]
 
-    def min(self, magn, magn_0=None, force_magn_gt_0=False,  ret='value'):
+    def min(self, magn, ret='value', magn_0=None, force_magn_gt_0=False):
         """
         Returns min value of given magnitude of the curve
         :param magn: magnitude value
