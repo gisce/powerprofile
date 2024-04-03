@@ -695,6 +695,9 @@ class PowerProfile():
         if default_data is None:
             default_data = {'ai': 0.0, 'ae': 0.0, 'r1': 0.0, 'r2': 0.0, 'r3': 0.0, 'r4': 0.0, 'valid': True, 'cch_fact': False}
 
+        if self.has_duplicates():
+            self.curve.drop_duplicates(subset=self.datetime_field)
+
         # creem un nou dataFrame amb una corba segons valors 'default_data'
         pp_fill = PowerProfile(self.datetime_field)
         pp_fill.fill(default_data, datetime_from, datetime_to)
