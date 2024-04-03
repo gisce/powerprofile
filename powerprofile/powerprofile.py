@@ -693,10 +693,10 @@ class PowerProfile():
         :param default_data: dict with field and default value, ie: {'ai': 0, 'ae': 0, 'cch_bruta': False}
         """
         if default_data is None:
-            default_data = {'ai': 0.0, 'ae': 0.0, 'r1': 0.0, 'r2': 0.0, 'r3': 0.0, 'r4': 0.0}
+            default_data = {'ai': 0.0, 'ae': 0.0, 'r1': 0.0, 'r2': 0.0, 'r3': 0.0, 'r4': 0.0, 'valid': True, 'cch_fact': False}
 
         # creem un nou dataFrame amb una corba segons valors 'default_data'
-        pp_fill = PowerProfile()
+        pp_fill = PowerProfile(self.datetime_field)
         pp_fill.fill(default_data, datetime_from, datetime_to)
 
         # combinem de les dues curves per omplir els forats
