@@ -715,7 +715,7 @@ class PowerProfile():
         # combinem de les dues curves per omplir els forats
         self.curve = self.curve.combine_first(pp_fill.curve)
 
-    def apply_chavenet(self, magn='ai'):
+    def apply_chauvenet(self, magn='ai'):
         import math as np
 
         # Calcular la media
