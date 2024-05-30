@@ -6,6 +6,7 @@ import pandas as pd
 import copy
 from .exceptions import *
 from .utils import Dragger
+import math
 try:
     # Python 2
     from cStringIO import StringIO
@@ -716,8 +717,6 @@ class PowerProfile():
         self.curve = self.curve.combine_first(pp_fill.curve)
 
     def apply_chauvenet(self, magn='ai'):
-        import math as np
-
         # Calcular la media
         avg = self.avg(magn)
 
@@ -731,7 +730,7 @@ class PowerProfile():
         criterion = 1 / (2 * leng)
 
         # Calcular Z_max para el criterio de Chauvenet
-        Z_max = np.sqrt(2) * np.erfc(criterion)
+        Z_max = math.sqrt(2) * math.erfc(criterion)
 
         # Calcular Z-scores para los datos
         Z_score = abs(self.curve[magn] - avg) / std
