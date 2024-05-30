@@ -302,6 +302,16 @@ class PowerProfile():
         if self._check_magn_is_valid(magn):
             return self.curve[magn].mean()
 
+
+    def std(self, magn):
+        """
+        Returns std value of given magnitude of the curve
+        :param magn: magnitude value
+        :return: std magnitude value
+        """
+        if self._check_magn_is_valid(magn):
+            return self.curve[magn].std()
+
     # Transformations
     def Balance(self, magn1='ai', magn2='ae', sufix='bal'):
         """
@@ -704,6 +714,33 @@ class PowerProfile():
 
         # combinem de les dues curves per omplir els forats
         self.curve = self.curve.combine_first(pp_fill.curve)
+
+    def apply_chavenet(self, magn='ai'):
+        import math as np
+
+        # Calcular la media
+        avg = self.avg(magn)
+
+        # Calcular la desviación estándar
+        std = self.std(magn)
+
+        # Número de datos
+        leng = len(self.curve[magn])
+
+        # Calcular el límite de desviación estándar usando el criterio de Chauvenet
+        criterion = 1 / (2 * leng)
+
+        # Calcular Z_max para el criterio de Chauvenet
+        Z_max = np.sqrt(2) * np.erfc(criterion)
+
+        # Calcular Z-scores para los datos
+        Z_score = abs(self.curve[magn] - avg) / std
+
+        # Identificar los valores atípicos según el criterio de Chauvenet
+        outliers = self.curve[Z_score < Z_max]
+
+        return outliers
+
 
 class PowerProfileQh(PowerProfile):
 
