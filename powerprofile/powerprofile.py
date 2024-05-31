@@ -285,14 +285,14 @@ class PowerProfile():
         if magn_0 is not None:
             filtered = filtered[self.curve[magn_0] == 0]
 
-        if self._check_magn_is_valid(magn):
+        if self._check_magn_is_valid(magn) and not filtered[magn].empty:
             if ret == 'value':
                 return filtered[magn].min()
             elif ret == 'timestamp':
                 idx_min = filtered[magn].idxmin()
                 return self[idx_min][self.datetime_field]
 
-            return False
+        return False
 
     def avg(self, magn):
         """
@@ -738,7 +738,7 @@ class PowerProfile():
         # Identificar los valores atípicos según el criterio de Chauvenet
         outliers = self.curve[Z_score < Z_max]
 
-        return outliers
+        self.curve = outliers
 
 
 class PowerProfileQh(PowerProfile):
