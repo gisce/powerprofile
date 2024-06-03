@@ -278,19 +278,21 @@ class PowerProfile():
         :param ret: value or timestamp of minimum
         :return: min magnitude value
         """
-        filtered = self.curve.copy()
+        if self._check_magn_is_valid(magn):
+            filtered = self.curve.copy()
 
-        if force_magn_gt_0:
-            filtered = filtered[self.curve[magn] > 0]
-        if magn_0 is not None:
-            filtered = filtered[self.curve[magn_0] == 0]
+            if force_magn_gt_0:
+                filtered = filtered[self.curve[magn] > 0]
 
-        if self._check_magn_is_valid(magn) and not filtered[magn].empty:
-            if ret == 'value':
-                return filtered[magn].min()
-            elif ret == 'timestamp':
-                idx_min = filtered[magn].idxmin()
-                return self[idx_min][self.datetime_field]
+            if magn_0 is not None and self._check_magn_is_valid(magn_0):
+                filtered = filtered[self.curve[magn_0] == 0]
+
+            if not filtered.empty:
+                if ret == 'value':
+                    return filtered[magn].min()
+                elif ret == 'timestamp':
+                    idx_min = filtered[magn].idxmin()
+                    return self[idx_min][self.datetime_field]
 
         return False
 
