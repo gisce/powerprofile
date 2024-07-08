@@ -6,6 +6,7 @@ import pandas as pd
 import copy
 from .exceptions import *
 from .utils import Dragger
+import math
 try:
     # Python 2
     from cStringIO import StringIO
@@ -303,6 +304,16 @@ class PowerProfile():
         """
         if self._check_magn_is_valid(magn):
             return self.curve[magn].mean()
+
+
+    def std(self, magn):
+        """
+        Returns std value of given magnitude of the curve
+        :param magn: magnitude value
+        :return: std magnitude value
+        """
+        if self._check_magn_is_valid(magn):
+            return self.curve[magn].std()
 
     # Transformations
     def Balance(self, magn1='ai', magn2='ae', sufix='bal'):
@@ -706,6 +717,41 @@ class PowerProfile():
 
         # combinem de les dues curves per omplir els forats
         self.curve = self.curve.combine_first(pp_fill.curve)
+
+    def apply_chauvenet(self, magn='ai'):
+        new_pp = self.copy()
+
+        # Calcular la media
+        avg = new_pp.avg(magn)
+
+        # Calcular la desviación estándar
+        std = new_pp.std(magn)
+
+        # Número de datos
+        leng = len(new_pp.curve[magn])
+
+        # Calcular el límite de desviación estándar usando el criterio de Chauvenet
+        criterion = 1 / (2 * leng)
+
+        # Calcular Z_max para el criterio de Chauvenet
+        Z_max = math.sqrt(2) * math.erfc(criterion)
+
+        # Calcular Z-scores para los datos
+        Z_score = abs(new_pp.curve[magn] - avg) / std
+
+        # Afegim dades al PowerProfile
+        new_pp.Z_max = Z_max
+        new_pp.std = std
+        new_pp.avg = avg
+        new_pp.criterion = criterion
+        new_pp.curve['Z_score'] = abs(new_pp.curve[magn] - avg) / std
+        new_pp.curve['outliers'] = Z_score > Z_max
+
+        # Identificar los valores atípicos según el criterio de Chauvenet
+        new_pp.curve = new_pp.curve[Z_score < Z_max]
+
+        return new_pp
+
 
 class PowerProfileQh(PowerProfile):
 
