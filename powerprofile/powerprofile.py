@@ -683,7 +683,7 @@ class PowerProfile():
         :param magn: Magnitude
         :return: bool
         """
-        if magn in DEFAULT_DATA_FIELDS_NO_FACT:
+        if magn in self.data_fields:
             return True
         raise ValueError("ERROR: [magn] is not a valid parameter, given magn: {}".format(magn))
 
