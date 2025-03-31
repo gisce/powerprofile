@@ -697,13 +697,15 @@ class PowerProfile():
 
         return datetime.strptime(str_date, '%Y-%m-%d %H:%M:%S')
 
-    def fill_gaps(self, datetime_from, datetime_to, default_data=None):
+    def fill_gaps(self, datetime_from, datetime_to, default_data=None, ensure_filled=None):
         """
         Fills the gaps in curve between **date_from** and **date_to** assigning default values specified in
         **default_data**
         :param datetime_from: localized start datetime
         :param datetime_to: localized end datetime
         :param default_data: dict with field and default value, ie: {'ai': 0, 'ae': 0, 'cch_bruta': False}
+        :param ensure_filled: list of tuples of columns that need to be filled after fill gaps. Of format:
+                               [(column, tz_info)]
         """
         if default_data is None:
             default_data = {'ai': 0.0, 'ae': 0.0, 'r1': 0.0, 'r2': 0.0, 'r3': 0.0, 'r4': 0.0, 'valid': True, 'cch_fact': False}
@@ -715,8 +717,20 @@ class PowerProfile():
         pp_fill = PowerProfile(self.datetime_field)
         pp_fill.fill(default_data, datetime_from, datetime_to)
 
-        # combinem de les dues curves per omplir els forats
-        self.curve = self.curve.combine_first(pp_fill.curve)
+        # Fill gaps using default data
+        self.curve = (self.curve
+                      .set_index(self.datetime_field, drop=False)
+                      .combine_first(pp_fill.curve
+                                     .set_index(self.datetime_field, drop=False)
+                                     )
+                      )
+        # Check that relevant date columns will be filled with their respective timezone
+        if ensure_filled is not None:
+            for column, tz_info in ensure_filled:
+                mask = self.curve[column].isna()
+                self.curve.loc[mask, column] = self.curve.loc[mask, self.datetime_field].dt.tz_convert(tz_info).values
+
+        self.curve.reset_index(drop=True, inplace=True)
 
     def apply_chauvenet(self, magn='ai'):
         new_pp = self.copy()
