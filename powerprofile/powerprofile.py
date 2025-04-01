@@ -727,8 +727,7 @@ class PowerProfile():
         # Check that relevant date columns will be filled with their respective timezone
         if ensure_filled is not None:
             for column, tz_info in ensure_filled:
-                mask = self.curve[column].isna()
-                self.curve.loc[mask, column] = self.curve.loc[mask, self.datetime_field].dt.tz_convert(tz_info).values
+                self.curve[column] = self.curve[self.datetime_field].dt.tz_convert(tz_info)
 
         self.curve.reset_index(drop=True, inplace=True)
         self.start = self.curve[self.datetime_field].iloc[0]
