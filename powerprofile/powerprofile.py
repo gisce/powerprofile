@@ -710,7 +710,7 @@ class PowerProfile():
         if default_data is None:
             default_data = {'ai': 0.0, 'ae': 0.0, 'r1': 0.0, 'r2': 0.0, 'r3': 0.0, 'r4': 0.0, 'valid': True, 'cch_fact': False}
 
-        if self.has_duplicates():
+        if self.has_duplicates()[0]:
             self.curve.drop_duplicates(subset=self.datetime_field)
 
         # creem un nou dataFrame amb una corba segons valors 'default_data'
@@ -731,6 +731,8 @@ class PowerProfile():
                 self.curve.loc[mask, column] = self.curve.loc[mask, self.datetime_field].dt.tz_convert(tz_info).values
 
         self.curve.reset_index(drop=True, inplace=True)
+        self.start = self.curve[self.datetime_field].iloc[0]
+        self.end = self.curve[self.datetime_field].iloc[-1]
 
     def apply_chauvenet(self, magn='ai'):
         new_pp = self.copy()
