@@ -730,8 +730,8 @@ class PowerProfile():
                 self.curve[column] = self.curve[self.datetime_field].dt.tz_convert(tz_info)
 
         self.curve.reset_index(drop=True, inplace=True)
-        self.start = self.curve[self.datetime_field].iloc[0]
-        self.end = self.curve[self.datetime_field].iloc[-1]
+        self.start = self.curve[self.datetime_field].min()
+        self.end = self.curve[self.datetime_field].max()
 
     def apply_chauvenet(self, magn='ai'):
         new_pp = self.copy()
