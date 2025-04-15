@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from expects.testing import failure
+from mamba import *
 from expects import *
 from powerprofile.powerprofile import PowerProfile, PowerProfileQh, DEFAULT_DATA_FIELDS
 from datetime import datetime, timedelta
@@ -191,3 +192,30 @@ with description('PowerProfileQh class'):
                     expect(pph.hours).to(equal(24))
                     expected_value = sum([x['value'] for x in self.powpro[:4]])
                     expect(pph[0]['value']).to(equal(expected_value))
+
+    with description('transform to quarter-hour curve'):
+        with before.all as self:
+            self.curve = []
+            self.start = LOCAL_TZ.localize(datetime(2023, 3, 11, 1, 0, 0))
+            for h in range(24):
+                self.curve.append({'timestamp': self.start + timedelta(hours=h),
+                                   'value': 100 + h})
+            self.hourly = PowerProfile()
+            self.hourly.load(self.curve)
+
+        with it('returns PowerProfileQh with 96 samples'):
+            qh = self.hourly.to_qh()
+            expect(qh).to(be_a(PowerProfileQh))
+            expect(qh.quart_hours).to(equal(24 * 4))  # 24 hores × 4 quarts
+
+        with it('ensures interpolation is consistent by hour'):
+            qh = self.hourly.to_qh()
+            qh_dict = qh.curve.set_index('timestamp').to_dict()['value']
+            for row in self.curve:
+                ts = row['timestamp']
+                expected = row['value']
+                qts = [
+                    ts + timedelta(minutes=i * 15) for i in range(4)
+                ]
+                interpolated_sum = sum(qh_dict[qt] for qt in qts)
+                expect(interpolated_sum).to(equal(expected))

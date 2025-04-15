@@ -420,6 +420,34 @@ class PowerProfile():
 
         return True
 
+    def to_qh(self, start_value=None, end_value=None):
+        """
+        Converteix la corba horària en una PowerProfileQh interpolant a quarts d’hora.
+
+        :param start_value: Valor per inicialitzar la interpolació de la primera hora (E_{h-1})
+        :param end_value: Valor per tancar la interpolació de l’última hora (E_{h+1})
+        :return: PowerProfileQh
+        """
+        from .utils import interpolate_quarter_curve
+
+        values = [start_value] + self.curve['value'].tolist() + [end_value]
+        timestamps = self.curve[self.datetime_field].tolist()
+
+        data = []
+        for item in interpolate_quarter_curve(values):  # no fem list(...)
+            h = item['hour']
+            q = item['quarter']
+            ts = timestamps[h - 1] + timedelta(minutes=(q - 1) * 15)
+            data.append({
+                self.datetime_field: ts,
+                'value': item['round_qh'],
+            })
+
+        qh_profile = PowerProfileQh(self.datetime_field)
+        qh_profile.load(data, datetime_field=self.datetime_field,
+                        data_fields=['value'])
+        return qh_profile
+
     def __operate(self, right, op='mul'):
         new = self.copy()
         scalar = False
