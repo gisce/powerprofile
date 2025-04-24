@@ -99,7 +99,11 @@ def interpolate_quarter_curve(values):
         rounded_sum = 0
 
         for q in range(1, 5):
-            norm_qh = qh_data[q]['eqhd'] + ((diff * qh_data[q]['eqhd']) / sum_ehd)
+            # norm_qh = qh_data[q]['eqhd'] + ((diff * qh_data[q]['eqhd']) / sum_ehd)
+            if sum_ehd:
+                norm_qh = qh_data[q]['eqhd'] + ((diff * qh_data[q]['eqhd']) / sum_ehd)
+            else:
+                norm_qh = 0
             if q < 4:
                 round_qh = int(round(norm_qh))
                 rounded_sum += round_qh
