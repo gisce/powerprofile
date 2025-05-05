@@ -424,6 +424,10 @@ class PowerProfile():
         """
         Converteix la corba horària en una PowerProfileQh interpolant a quarts d’hora.
 
+        Explicacio funcionament del metode:
+         El consum de la hora 3 representa el consum de la hora 2 fins a la hora 3 llavors, per la hora 3
+         al interpolar hauriem d'obtenir els quarts d'hora 2:15, 2:30, 2:45, 3:00.
+
         :param start_value: Valor per inicialitzar la interpolació de la primera hora (E_{h-1})
         :param end_value: Valor per tancar la interpolació de l’última hora (E_{h+1})
         :return: PowerProfileQh
@@ -437,7 +441,10 @@ class PowerProfile():
         for item in interpolate_quarter_curve(values):  # no fem list(...)
             h = item['hour']
             q = item['quarter']
-            ts = timestamps[h - 1] + timedelta(minutes=(q - 1) * 15)
+            # El consum de la hora 3 representa el consum de la hora 2 fins a la hora 3 llavors, per la hora 3
+            # al interpolar hauriem d'obtenir els quarts d'hora 2:15, 2:30, 2:45, 3:00. Per aixo a sota restem una
+            # hora a la hora de la corba horaria.
+            ts = timestamps[h - 1] - timedelta(hours=1) + timedelta(minutes=q * 15)
             data.append({
                 self.datetime_field: ts,
                 'value': item['round_qh'],

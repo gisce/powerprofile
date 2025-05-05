@@ -214,8 +214,11 @@ with description('PowerProfileQh class'):
             for row in self.curve:
                 ts = row['timestamp']
                 expected = row['value']
+                # El consum de la hora 3 representa el consum de la hora 2 fins a la hora 3 llavors, per la hora 3
+                # al interpolar hauriem d'obtenir els quarts d'hora 2:15, 2:30, 2:45, 3:00. Per aixo a sota restem una
+                # hora a la hora de la corba horaria.
                 qts = [
-                    ts + timedelta(minutes=i * 15) for i in range(4)
+                    ts - timedelta(hours=1) + timedelta(minutes=i * 15) for i in range(1, 5)
                 ]
                 interpolated_sum = sum(qh_dict[qt] for qt in qts)
                 expect(interpolated_sum).to(equal(expected))
