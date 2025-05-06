@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=44", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "powerprofile"
+version = "0.23.4"
+description = "Library to manage power profiles"
+readme = "README.md"
+requires-python = ">=2.7"
+license = "AGPL-3.0-only"
+authors = [
+  {name = "GISCE-TI, S.L.", email = "devel@gisce.net"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 2.7",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Utilities"
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/gisce/powerprofile"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "docs", "examples"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.dynamic.optional-dependencies]
+test = {file = ["requirements-dev.txt"]}
