@@ -16,11 +16,11 @@ permissions:
 
 jobs:
   upload-to-pypi:
-    runs-on: [self-hosted, Keroberos]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -29,8 +29,10 @@ jobs:
           mv setup.cfg old_setup.cfg
           mv setup.py old_setup.py
           python -m pip install --upgrade pip
-          pip install --upgrade packaging
-          pip install build twine
+          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade packaging
+          python -m pip install --upgrade build
+          python -m pip install --upgrade twine
 
       - name: Build package
         run: python -m build
