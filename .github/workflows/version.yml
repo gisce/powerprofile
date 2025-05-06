@@ -11,6 +11,7 @@ concurrency:
 env:
   # For copy pase proposes, change this variable
   VERSION_FILE: setup.py
+  TOML_FILE: pyproject.toml
   HOME: /home/ci_repos
   SCRIPTS_PATH: /home/ci_repos/ci_scripts
   USER: ci_repos
@@ -77,6 +78,6 @@ jobs:
           if [[ $VERSION_TYPE != false ]]; then
             git config user.name Release Bot
             git config user.email github-actions@github.com
-            bump2version $VERSION_TYPE --tag --commit -m "Bump to v{new_version}" $VERSION_FILE
+            bump2version $VERSION_TYPE --tag --commit -m "Bump to v{new_version}" $VERSION_FILE $TOML_FILE
             git push origin master --tags
           fi
