@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "powerprofile"
-version = "0.23.5"
+version = "0.23.6"
 description = "Library to manage power profiles"
 readme = "README.md"
 requires-python = ">=2.7"
