@@ -666,7 +666,7 @@ class PowerProfile():
 
         hasduplicates, gap = self.has_duplicates()
         if gap is not None:
-            if first_gap is None:
+            if first_gap is None or first_gap == self.start:
                 first_gap = gap
             else:
                 first_gap = min(first_gap, gap)
@@ -674,9 +674,9 @@ class PowerProfile():
         if first_gap is None:
             return self
         else:
-            last_hour = TIMEZONE.normalize(first_gap - timedelta(hours=1))
+            last_hour = TIMEZONE.normalize(first_gap - timedelta(seconds=self.SAMPLING_INTERVAL))
             if last_hour.hour > 0:
-                last_hour = last_hour.replace(hour=0)
+                last_hour = last_hour.replace(hour=0, minute=0)
             if last_hour >= self.start:
                 data = self.curve[self.curve[self.datetime_field] <= last_hour]
                 data = data.to_dict('records')
