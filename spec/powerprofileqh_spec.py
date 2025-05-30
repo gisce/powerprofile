@@ -222,3 +222,125 @@ with description('PowerProfileQh class'):
                 ]
                 interpolated_sum = sum(qh_dict[qt] for qt in qts)
                 expect(interpolated_sum).to(equal(expected))
+
+        with context('completeness'):
+
+            with before.all:
+                self.curve = []
+                self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
+                self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
+                for quarters in range(0, 96):
+                    self.curve.append(
+                        {
+                            'timestamp': self.start + timedelta(minutes=quarters * 15),
+                            'value': 100 + quarters,
+                            'valid': True,
+                            'cch_fact': True}
+                    )
+
+                self.original_curve_len = len(self.curve)
+
+                # self.data_path = './spec/data/'
+                # with open(self.data_path + 'curve_all.json') as fp:
+                #     self.curve_all = json.load(fp, object_hook=datetime_parser)
+                self.powpro = PowerProfileQh()
+
+            with it('returns true when complete'):
+                self.powpro.load(self.curve)
+
+                expect(self.powpro.is_complete()[0]).to(be_true)
+                expect(lambda: self.powpro.check()).not_to(raise_error)
+
+            with it('returns false when hole'):
+                curve = copy(self.curve)
+                del curve[3]
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.quart_hours).to(equal(self.original_curve_len - 1))
+                expect(self.powpro.is_complete()[0]).to(be_false)
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
+
+            with it('returns false when hole at beginning'):
+                curve = copy(self.curve)
+                del curve[0]
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.quart_hours).to(equal(self.original_curve_len - 1))
+                expect(self.powpro.is_complete()[0]).to(be_false)
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
+
+            with it('returns false when hole at end'):
+                curve = copy(self.curve)
+                del curve[-1]
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.quart_hours).to(equal(self.original_curve_len - 1))
+                expect(self.powpro.is_complete()[0]).to(be_false)
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
+
+            with it('returns false when complete but duplicated hours'):
+                curve = copy(self.curve)
+                curve.append(curve[-1])
+                curve.append(curve[-10])
+                self.powpro.load(curve, self.start, self.end)
+
+                complete, hole = self.powpro.is_complete()
+                expect(complete).to(be_false)
+                expect(hole).to(equal(curve[0]['timestamp']))
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
+
+            with it('returns false when incomplete but duplicated hours complete number of hours'):
+                curve = copy(self.curve[1:])
+                curve.append(curve[-1])
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.is_complete()[0]).to(be_false)
+                expect(self.powpro.is_complete()[1]).to(equal(self.curve[0]['timestamp']))
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
+
+        with context('complete subcurve'):
+            with before.all:
+                self.curve_subcurve_testing = []
+                self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 0, 15, 0))
+                self.end = LOCAL_TZ.localize(datetime(2020, 3, 13, 0, 0, 0))
+                for quarters in range(0, 192):
+                    self.curve_subcurve_testing.append(
+                        {'timestamp': self.start + timedelta(minutes=quarters * 15), 'value': 100 + quarters}
+                    )
+                self.powpro_subcurve_testing = PowerProfileQh()
+
+                self.curve_subcurve_testing2 = []
+                for quarters in range(0, 192):
+                    self.curve_subcurve_testing2.append(
+                        {'timestamp': self.start + timedelta(minutes=quarters * 15), 'value': 100 + quarters}
+                    )
+                for quarters in range(172, 192):
+                    self.curve_subcurve_testing2.append(
+                        {'timestamp': self.start + timedelta(minutes=(quarters - 1) * 15), 'value': 100 + quarters}
+                    )
+                self.powpro_subcurve_testing2 = PowerProfileQh()
+
+                self.powpro_subcurve_testing3 = PowerProfileQh()
+
+            with it('returns first complete part of curve if there are gaps'):
+                curve = copy(self.curve_subcurve_testing)
+                del curve[-1]
+                self.powpro_subcurve_testing.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing.get_complete_daily_subcurve()
+                expect(len(pp.curve)).to(equal(96))
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing[95]['timestamp']))
+
+            with it('returns first complete part of curve if there are duplicated hours'):
+                curve = copy(self.curve_subcurve_testing2)
+                del curve[-1]
+                self.powpro_subcurve_testing2.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing2.get_complete_daily_subcurve()
+                expect(len(pp.curve)).to(equal(96))
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing2[95]['timestamp']))
+
+            with it('returns empty PowerProfile if first hour is lost'):
+                curve = copy(self.curve_subcurve_testing)
+                del curve[0]
+                self.powpro_subcurve_testing3.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing3.get_complete_daily_subcurve()
+                expect((pp.curve)).to(equal(None))
