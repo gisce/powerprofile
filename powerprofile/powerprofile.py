@@ -436,7 +436,10 @@ class PowerProfile():
 
         values = [start_value] + self.curve['value'].tolist() + [end_value]
         timestamps = self.curve[self.datetime_field].tolist()
-
+        #Calculem la hora anterior a la hora d'inici de la corba. Ex: la hora 1 horaria traduit a quarthoraria
+        # correspon als quarts d'hora hora 00:15, 00:30, 00:45, 01:00
+        previous_hour_timestamp = self.curve[self.datetime_field][0] - timedelta(hours=1)
+        timestamps = [previous_hour_timestamp] + timestamps
         data = []
         for item in interpolate_quarter_curve(values):  # no fem list(...)
             h = item['hour']
@@ -444,7 +447,7 @@ class PowerProfile():
             # El consum de la hora 3 representa el consum de la hora 2 fins a la hora 3 llavors, per la hora 3
             # al interpolar hauriem d'obtenir els quarts d'hora 2:15, 2:30, 2:45, 3:00. Per aixo a sota restem una
             # hora a la hora de la corba horaria.
-            ts = timestamps[h - 1] - timedelta(hours=1) + timedelta(minutes=q * 15)
+            ts = timestamps[h - 1] + timedelta(minutes=q * 15)
             data.append({
                 self.datetime_field: ts,
                 'value': item['round_qh'],
