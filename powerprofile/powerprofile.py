@@ -420,7 +420,14 @@ class PowerProfile():
 
         return True
 
-    def to_qh(self, start_value=None, end_value=None):
+    def to_qh(self, start_value=None, end_value=None, method='interpolate', magn='value'):
+        if method == 'lineal':
+            return self.to_qh_lineal(magn=magn)
+        else:
+            return self.to_qh_interpolate(start_value, end_value, magn=magn)
+
+
+    def to_qh_interpolate(self, start_value=None, end_value=None, magn='value'):
         """
         Converteix la corba horària en una PowerProfileQh interpolant a quarts d’hora.
 
@@ -430,11 +437,12 @@ class PowerProfile():
 
         :param start_value: Valor per inicialitzar la interpolació de la primera hora (E_{h-1})
         :param end_value: Valor per tancar la interpolació de l’última hora (E_{h+1})
+        :param magn: Valors passats (Serveix per no haver de fer renamings)
         :return: PowerProfileQh
         """
         from .utils import interpolate_quarter_curve
 
-        values = [start_value] + self.curve['value'].tolist() + [end_value]
+        values = [start_value] + self.curve[magn].tolist() + [end_value]
         timestamps = self.curve[self.datetime_field].tolist()
         #Calculem la hora anterior a la hora d'inici de la corba. Ex: la hora 1 horaria traduit a quarthoraria
         # correspon als quarts d'hora hora 00:15, 00:30, 00:45, 01:00
@@ -450,12 +458,49 @@ class PowerProfile():
             ts = timestamps[h - 1] + timedelta(minutes=q * 15)
             data.append({
                 self.datetime_field: ts,
-                'value': item['round_qh'],
+                magn: item['round_qh'],
             })
 
         qh_profile = PowerProfileQh(self.datetime_field)
         qh_profile.load(data, datetime_field=self.datetime_field,
-                        data_fields=['value'])
+                        data_fields=[magn])
+        return qh_profile
+
+    def to_qh_lineal(self, magn='value'):
+        """
+        Converteix la corba horària en una PowerProfileQh interpolant linealment a quarts d’hora.
+
+        Explicacio funcionament del metode:
+         El consum de la hora 3 representa el consum de la hora 2 fins a la hora 3, per tant, per
+         calcular la corva lineal dividirem el consum de la hora 3 entre 4 i l'assignarem a parts
+         iguals a cada quart d'hora
+
+        :param magn: Valors passats (Serveix per no haver de fer renamings)
+        :return: PowerProfileQh
+        """
+        values = self.curve[magn].tolist()
+
+        timestamps = self.curve[self.datetime_field].tolist()
+        previous_hour_timestamp = timestamps[0] - timedelta(hours=1)
+        timestamps = [previous_hour_timestamp] + timestamps
+
+        data = []
+        for hour in range(0, len(values)):
+            for quarter in range(1, 5):  # Quarts d’hora: 15, 30, 45, 60
+                qh_ts = timestamps[hour] + timedelta(minutes=15 * quarter)
+                plana = round(values[hour] / 4.0, 3)
+                if quarter == 4:
+                    if plana * 4 != values[hour]:
+                        diff = plana * 4 - values[hour]
+                        plana = round(plana - diff, 3)
+                data.append({
+                    self.datetime_field: qh_ts,
+                    magn: plana,
+                })
+
+        qh_profile = PowerProfileQh(self.datetime_field)
+        qh_profile.load(data, datetime_field=self.datetime_field, data_fields=[magn])
+
         return qh_profile
 
     def __operate(self, right, op='mul'):
