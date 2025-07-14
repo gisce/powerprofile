@@ -493,6 +493,8 @@ class PowerProfile():
                     if plana * 4 != values[hour]:
                         diff = plana * 4 - values[hour]
                         plana = round(plana - diff, decimals)
+                if decimals == 0:
+                    plana = int(plana)
                 data.append({
                     self.datetime_field: qh_ts,
                     magn: plana,
