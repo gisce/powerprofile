@@ -5,7 +5,7 @@ from pytz import timezone
 import pandas as pd
 import copy
 from .exceptions import *
-from .utils import Dragger
+from .utils import Dragger, my_round
 import math
 try:
     # Python 2
@@ -492,7 +492,7 @@ class PowerProfile():
                 if quarter == 4:
                     if plana * 4 != values[hour]:
                         diff = plana * 4 - values[hour]
-                        plana = round(plana - diff, decimals)
+                        plana = my_round(plana - diff, decimals)
                 if decimals == 0:
                     plana = int(plana)
                 data.append({

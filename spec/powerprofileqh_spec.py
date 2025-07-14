@@ -357,7 +357,7 @@ with description('PowerProfileQh class'):
             self.profile.load(self.curve)
 
         with it('generates 12 quarter-hour values with linear values and NO decimals (Example with 3 hours)'):
-            qh = self.profile.to_qh(method="lineal", decimals=0)
+            qh = self.profile.to_qh(method="lineal")
             expect(qh).to(be_a(PowerProfileQh))
             expect(len(qh.curve)).to(equal(12))
 

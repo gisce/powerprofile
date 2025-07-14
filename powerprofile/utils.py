@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import math
 from decimal import Decimal
 from datetime import datetime
 try:
@@ -116,3 +117,11 @@ def interpolate_quarter_curve(values):
                 'round_qh': round_qh,
             })
             yield qh_data[q]
+
+def my_round(x, d=0):
+    x = float(x)
+    p = 10 ** d
+    if x > 0:
+        return float(math.floor((x * p) + 0.5))/p
+    else:
+        return float(math.ceil((x * p) - 0.5))/p
