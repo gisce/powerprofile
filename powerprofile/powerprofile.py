@@ -486,15 +486,16 @@ class PowerProfile():
 
         data = []
         for hour in range(0, len(values)):
+            dragger = Dragger()
+            multiplier = 10.0 ** decimals
             for quarter in range(1, 5):  # Quarts d’hora: 15, 30, 45, 60
                 qh_ts = timestamps[hour] + timedelta(minutes=15 * quarter)
-                plana = my_round(values[hour] / 4.0, decimals)
-                if quarter == 4:
-                    if plana * 4 != values[hour]:
-                        diff = plana * 4 - values[hour]
-                        plana = my_round(plana - diff, decimals)
-                if decimals == 0:
-                    plana = int(plana)
+                if decimals != 0:
+                    plana = dragger.drag(int(values[hour] * multiplier) / 4.0)
+                    plana = my_round(plana / multiplier, decimals)
+                else:
+                    plana = dragger.drag(values[hour] / 4.0)
+
                 data.append({
                     self.datetime_field: qh_ts,
                     magn: plana,

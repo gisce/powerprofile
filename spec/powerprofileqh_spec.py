@@ -362,9 +362,9 @@ with description('PowerProfileQh class'):
             expect(len(qh.curve)).to(equal(12))
 
             expected_values = [
-                31, 31, 31, 32,
+                31, 32, 31, 31,
                 50, 50, 50, 50,
-                38, 38, 38, 36,
+                38, 37, 38, 37,
             ]
 
             actual_values = qh.curve['value'].tolist()
@@ -376,7 +376,7 @@ with description('PowerProfileQh class'):
             expect(len(qh.curve)).to(equal(12))
 
             expected_values = [
-                31.3, 31.3, 31.3, 31.1,
+                31.3, 31.2, 31.3, 31.2,
                 50, 50, 50, 50,
                 37.5, 37.5, 37.5, 37.5,
             ]
