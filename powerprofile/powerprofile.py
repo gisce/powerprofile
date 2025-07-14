@@ -420,9 +420,9 @@ class PowerProfile():
 
         return True
 
-    def to_qh(self, start_value=None, end_value=None, method='interpolate', magn='value'):
+    def to_qh(self, start_value=None, end_value=None, method='interpolate', magn='value', decimals=0):
         if method == 'lineal':
-            return self.to_qh_lineal(magn=magn)
+            return self.to_qh_lineal(magn=magn, decimals=decimals)
         else:
             return self.to_qh_interpolate(start_value, end_value, magn=magn)
 
@@ -466,7 +466,7 @@ class PowerProfile():
                         data_fields=[magn])
         return qh_profile
 
-    def to_qh_lineal(self, magn='value'):
+    def to_qh_lineal(self, magn='value', decimals=0):
         """
         Converteix la corba horària en una PowerProfileQh interpolant linealment a quarts d’hora.
 
@@ -488,11 +488,11 @@ class PowerProfile():
         for hour in range(0, len(values)):
             for quarter in range(1, 5):  # Quarts d’hora: 15, 30, 45, 60
                 qh_ts = timestamps[hour] + timedelta(minutes=15 * quarter)
-                plana = round(values[hour] / 4.0, 3)
+                plana = round(values[hour] / 4.0, decimals)
                 if quarter == 4:
                     if plana * 4 != values[hour]:
                         diff = plana * 4 - values[hour]
-                        plana = round(plana - diff, 3)
+                        plana = round(plana - diff, decimals)
                 data.append({
                     self.datetime_field: qh_ts,
                     magn: plana,
