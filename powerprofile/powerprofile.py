@@ -488,7 +488,7 @@ class PowerProfile():
         for hour in range(0, len(values)):
             for quarter in range(1, 5):  # Quarts d’hora: 15, 30, 45, 60
                 qh_ts = timestamps[hour] + timedelta(minutes=15 * quarter)
-                plana = round(values[hour] / 4.0, decimals)
+                plana = my_round(values[hour] / 4.0, decimals)
                 if quarter == 4:
                     if plana * 4 != values[hour]:
                         diff = plana * 4 - values[hour]
