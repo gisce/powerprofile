@@ -349,20 +349,48 @@ with description('PowerProfileQh class'):
         with before.each:
             self.curve = []
             self.start = LOCAL_TZ.localize(datetime(2025, 1, 1, 1, 0, 0))
-            self.curve.append({'timestamp': self.start, 'value': 100})
+            self.curve.append({'timestamp': self.start, 'value': 125})
             self.curve.append({'timestamp': self.start + timedelta(hours=1), 'value': 200})
             self.curve.append({'timestamp': self.start + timedelta(hours=2), 'value': 150})
 
             self.profile = PowerProfile()
             self.profile.load(self.curve)
 
-        with it('generates 12 quarter-hour values with linear values (Example with 3 hours)'):
+        with it('generates 12 quarter-hour values with linear values and NO decimals (Example with 3 hours)'):
             qh = self.profile.to_qh(method="lineal")
             expect(qh).to(be_a(PowerProfileQh))
             expect(len(qh.curve)).to(equal(12))
 
             expected_values = [
-                25.0, 25.0, 25.0, 25.0,
+                31, 31, 31, 32,
+                50, 50, 50, 50,
+                38, 38, 38, 36,
+            ]
+
+            actual_values = qh.curve['value'].tolist()
+            expect(actual_values).to(equal(expected_values))
+
+        with it('generates 12 quarter-hour values with linear values and ONE decimal (Example with 3 hours)'):
+            qh = self.profile.to_qh(method="lineal", decimals=1)
+            expect(qh).to(be_a(PowerProfileQh))
+            expect(len(qh.curve)).to(equal(12))
+
+            expected_values = [
+                31.3, 31.3, 31.3, 31.1,
+                50, 50, 50, 50,
+                37.5, 37.5, 37.5, 37.5,
+            ]
+
+            actual_values = qh.curve['value'].tolist()
+            expect(actual_values).to(equal(expected_values))
+
+        with it('generates 12 quarter-hour values with linear values and TWO decimals (Example with 3 hours)'):
+            qh = self.profile.to_qh(method="lineal", decimals=2)
+            expect(qh).to(be_a(PowerProfileQh))
+            expect(len(qh.curve)).to(equal(12))
+
+            expected_values = [
+                31.25, 31.25, 31.25, 31.25,
                 50.0, 50.0, 50.0, 50.0,
                 37.5, 37.5, 37.5, 37.5,
             ]
