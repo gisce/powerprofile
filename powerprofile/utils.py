@@ -16,7 +16,7 @@ class Dragger(Counter):
             return number
 
         number = Decimal(str(number)) + self[key]
-        aprox = int(round(number))
+        aprox = int(my_round(number))
         self[key] = number - aprox
         return aprox
 
