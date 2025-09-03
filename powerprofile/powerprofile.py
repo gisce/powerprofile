@@ -142,29 +142,17 @@ class PowerProfile():
 
     def is_complete_counter(self, counter):
         ''' Checks completeness of curve '''
-        start = self.start
-        if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
-            start = TIMEZONE.localize(self.start)
-        end = self.end
-        if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
-            end = TIMEZONE.localize(self.end)
+        ic_complete, first_not_found = self.get_all_holes_counter(counter)
+        if first_not_found:
+            first_not_found = first_not_found[0]
 
-        samples = ((end - start).total_seconds() + self.SAMPLING_INTERVAL) / self.SAMPLING_INTERVAL
-        if counter != samples or counter != self.unique_samples:
-            ids = set(self.curve[self.datetime_field])
-            dt = start
-            df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
-            not_found = sorted(list(df_hours - ids))
-            if len(not_found):
-                first_not_found = not_found[0]
-            else:
-                first_not_found = dt
-            return False, first_not_found
-        return True, None
+        return ic_complete, first_not_found
 
-    def get_all_holes(self):
+    def is_complete(self):
+        return self.is_complete_counter(self.hours)
+
+    def get_all_holes_counter(self, counter):
         ''' Checks completeness of curve and returns all the holes '''
-        counter = self.hours
         start = self.start
         if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
             start = TIMEZONE.localize(self.start)
@@ -185,8 +173,8 @@ class PowerProfile():
             return False, first_not_found
         return True, None
 
-    def is_complete(self):
-        return self.is_complete_counter(self.hours)
+    def get_all_holes(self):
+        return self.get_all_holes_counter(self.hours)
 
     def is_fixed(self, fields=['cch_fact', 'valid']):
         """
@@ -886,6 +874,9 @@ class PowerProfileQh(PowerProfile):
 
     def is_complete(self):
         return self.is_complete_counter(self.quart_hours)
+
+    def get_all_holes(self):
+        return self.get_all_holes_counter(self.quart_hours)
 
     def get_hourly_profile(self):
         """

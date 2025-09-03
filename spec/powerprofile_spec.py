@@ -254,6 +254,8 @@ with description('PowerProfile class'):
             self.curve = []
             self.start = LOCAL_TZ.localize(datetime(2020, 3, 11, 1, 0, 0))
             self.end = LOCAL_TZ.localize(datetime(2020, 3, 12, 0, 0, 0))
+            self.start_all = LOCAL_TZ.localize(datetime(2022, 1, 1, 1, 0, 0))
+            self.end_all = LOCAL_TZ.localize(datetime(2022, 2, 1, 0, 0, 0))
             for hours in range(0, 24):
                 self.curve.append(
                     {
@@ -323,10 +325,105 @@ with description('PowerProfile class'):
                 expect(self.powpro.is_complete()[1]).to(equal(self.curve[0]['timestamp']))
                 expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
 
+        with context('holes'):
+
+            with it('returns true when complete'):
+                self.powpro.load(self.curve)
+
+                expect(self.powpro.get_all_holes()[0]).to(be_true)
+                expect(lambda: self.powpro.check()).not_to(raise_error)
+
+            with it('returns false when hole'):
+                curve = copy(self.curve)
+                del curve[3]
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
+
+            with it('returns false when hole at beginning'):
+                curve = copy(self.curve)
+                del curve[0]
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
+
+            with it('returns false when hole at end'):
+                curve = copy(self.curve)
+                del curve[-1]
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.hours).to(equal(self.original_curve_len - 1))
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileIncompleteCurve))
+
+            with it('returns false when complete but duplicated hours'):
+                curve = copy(self.curve)
+                curve.append(curve[-1])
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(self.powpro.get_all_holes()[1][0]).to(equal(curve[0]['timestamp']))
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
+
+            with it('returns false when incomplete but duplicated hours complete number of hours'):
+                curve = copy(self.curve[1:])
+                curve.append(curve[-1])
+                self.powpro.load(curve, self.start, self.end)
+
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(self.powpro.get_all_holes()[1][0]).to(equal(self.curve[0]['timestamp']))
+                expect(lambda: self.powpro.check()).to(raise_error(PowerProfileDuplicatedTimes))
+
+            with it('returns false when incomplete and returns a list with ordered holes from past to present'):
+                curve = copy(self.curve_all['curve'][:])
+                del curve[40]
+                del curve[60]
+                del curve[100]
+                del curve[200]
+                del curve[33]
+
+                curve = sorted(curve, key=lambda x: x['local_datetime'], reverse=True)
+                self.powpro.load(curve, self.start_all, self.end_all, datetime_field='local_datetime')
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                holes = self.powpro.get_all_holes()[1]
+                is_sorted = all(
+                    holes[i] <= holes[i + 1] for i in range(len(holes) - 1)
+                )
+                expect(is_sorted).to(be_true)
+
+            with it('returns false when incomplete and returns a list with the consecutive holes'):
+                curve = copy(self.curve_all['curve'][:])
+                curve_len = len(curve)
+                missing = int(curve_len * 0.1)
+                mid = curve_len // 2
+                start = mid - missing // 2
+                end = start + missing
+
+                removed = [LOCAL_TZ.localize(date['local_datetime']) for date in curve[start:end]]
+                remaining = curve[:start] + curve[end:]
+                self.powpro.load(remaining, self.start_all, self.end_all, datetime_field='local_datetime')
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(self.powpro.get_all_holes()[1]).to(equal(removed))
+
+            with it('returns false when incomplete and returns a list with the non consecutive holes'):
+                curve = copy(self.curve_all['curve'][:])
+                missing_indexes = (5,20,25,40,60)
+                missing = [curve[i] for i in missing_indexes]
+                curve = [curve_item for i,curve_item in enumerate(curve) if i not in missing_indexes]
+
+                removed = [LOCAL_TZ.localize(date['local_datetime']) for date in missing]
+                self.powpro.load(curve, self.start_all, self.end_all, datetime_field='local_datetime')
+                expect(self.powpro.get_all_holes()[0]).to(be_false)
+                expect(self.powpro.get_all_holes()[1]).to(equal(removed))
+
         with context('duplicated hours'):
 
             with it('returns true when not duplicates'):
-                self.powpro.load(self.curve)
+                self.powpro.load(self.curve, self.start, self.end, datetime_field='timestamp')
 
                 expect(self.powpro.has_duplicates()[0]).to(be_false)
                 expect(lambda: self.powpro.check()).not_to(raise_error)
