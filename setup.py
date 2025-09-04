@@ -12,7 +12,7 @@ with open('README.md') as f:
 
 setup(
     name="powerprofile",
-    version="0.26.0",
+    version="0.27.0",
     author="GISCE-TI, S.L.",
     author_email="devel@gisce.net",
     description=("Library to manage power profiles"),
