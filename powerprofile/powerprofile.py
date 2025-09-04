@@ -142,6 +142,17 @@ class PowerProfile():
 
     def is_complete_counter(self, counter):
         ''' Checks completeness of curve '''
+        ic_complete, first_not_found = self.get_all_holes_counter(counter)
+        if first_not_found:
+            first_not_found = first_not_found[0]
+
+        return ic_complete, first_not_found
+
+    def is_complete(self):
+        return self.is_complete_counter(self.hours)
+
+    def get_all_holes_counter(self, counter):
+        ''' Checks completeness of curve and returns all the holes '''
         start = self.start
         if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
             start = TIMEZONE.localize(self.start)
@@ -156,14 +167,14 @@ class PowerProfile():
             df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
             not_found = sorted(list(df_hours - ids))
             if len(not_found):
-                first_not_found = not_found[0]
+                first_not_found = not_found
             else:
-                first_not_found = dt
+                first_not_found = [dt]
             return False, first_not_found
         return True, None
 
-    def is_complete(self):
-        return self.is_complete_counter(self.hours)
+    def get_all_holes(self):
+        return self.get_all_holes_counter(self.hours)
 
     def is_fixed(self, fields=['cch_fact', 'valid']):
         """
@@ -863,6 +874,9 @@ class PowerProfileQh(PowerProfile):
 
     def is_complete(self):
         return self.is_complete_counter(self.quart_hours)
+
+    def get_all_holes(self):
+        return self.get_all_holes_counter(self.quart_hours)
 
     def get_hourly_profile(self):
         """
