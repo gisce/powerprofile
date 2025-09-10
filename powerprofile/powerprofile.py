@@ -166,12 +166,16 @@ class PowerProfile():
             dt = start
             df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
             not_found = sorted(list(df_hours - ids))
-            if len(not_found):
-                first_not_found = not_found
-            else:
-                first_not_found = [dt]
-            return False, first_not_found
-        return True, None
+            return not_found
+            # TODO: Revisar codi a partir d'aquí: Es necesita if/else? Cal el False/True?
+            # if len(not_found):
+            #     first_not_found = not_found
+            # else:
+            #     first_not_found = [dt]
+        #     return False, first_not_found
+        # return True, None
+        #     return first_not_found
+        return None
 
     def get_all_holes(self):
         return self.get_all_holes_counter(self.hours)
@@ -894,3 +898,43 @@ class PowerProfileQh(PowerProfile):
         new_curve.end = new_curve.curve[new_curve.datetime_field].max()
 
         return new_curve
+
+    def classify_gaps(self):
+
+        curve_gaps = self.get_all_holes()
+
+        gaps_dict = {
+            "small_gaps": [],
+            "big_gaps": []
+        }
+        start_gap = None
+        last_gap = None
+        gap_counter = 0
+
+        for gap in curve_gaps:
+            if last_gap is None:
+                start_gap = gap
+                last_gap = gap
+                gap_counter = 1
+                continue
+
+            if gap - last_gap <= timedelta(seconds=900):
+                last_gap = gap
+                gap_counter += 1
+            else:
+                if gap_counter > 12:
+                    gaps_dict["big_gaps"].append((start_gap, last_gap))
+                else:
+                    gaps_dict["small_gaps"].append((start_gap, last_gap))
+
+                start_gap = gap
+                last_gap = gap
+                gap_counter = 1
+
+        if start_gap is not None:
+            if gap_counter > 12:
+                gaps_dict["big_gaps"].append((start_gap, last_gap))
+            else:
+                gaps_dict["small_gaps"].append((start_gap, last_gap))
+
+        return gaps_dict
