@@ -166,16 +166,13 @@ class PowerProfile():
             dt = start
             df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
             not_found = sorted(list(df_hours - ids))
-            return not_found
-            # TODO: Revisar codi a partir d'aquí: Es necesita if/else? Cal el False/True?
+            return False, not_found
+        return True, None
+            # TODO: Revisar codi a partir d'aquí: Es necesita if/else?
             # if len(not_found):
             #     first_not_found = not_found
             # else:
             #     first_not_found = [dt]
-        #     return False, first_not_found
-        # return True, None
-        #     return first_not_found
-        return None
 
     def get_all_holes(self):
         return self.get_all_holes_counter(self.hours)
@@ -901,7 +898,7 @@ class PowerProfileQh(PowerProfile):
 
     def classify_gaps(self):
 
-        curve_gaps = self.get_all_holes()
+        is_complete, curve_gaps = self.get_all_holes()
 
         gaps_dict = {
             "small_gaps": [],
