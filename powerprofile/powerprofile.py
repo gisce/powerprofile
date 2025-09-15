@@ -896,6 +896,11 @@ class PowerProfileQh(PowerProfile):
         return new_curve
 
     def classify_gaps(self):
+        """
+        Function to check if there are more than 12 consecutive periods missing in a curve
+        :return:
+        Dict with 2 lists of tuples ('small_gaps' and 'big_gaps')
+        """
 
         is_complete, curve_gaps = self.get_all_holes()
 
