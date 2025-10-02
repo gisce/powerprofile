@@ -569,3 +569,48 @@ with description('PowerProfileQh class'):
             expect(gaps["small_gaps"][0][0]).to(be_a(datetime))
             expect(gaps["big_gaps"][0][1]).to(be_a(datetime))
 
+    with description('PowerProfileQh.classify_gaps_by_day() testing'):
+        with it('Returns empty dict when curve is complete'):
+            start = LOCAL_TZ.localize(datetime(2025, 1, 1, 0, 15, 0))
+            end = LOCAL_TZ.localize(datetime(2025, 1, 2, 0, 0, 0))
+            curve = [{'timestamp': start + timedelta(minutes=15 * i), 'value': i} for i in range(0, 96)]
+
+            qh = PowerProfileQh()
+            qh.load(curve, start, end)
+            gaps = qh.classify_gaps_by_day()
+
+            # Comprovem que els gaps són correctes
+            expect(gaps).to(equal({}))
+            expect(gaps).to(equal({}))
+
+        with it('Detects both small and big gaps'):
+            start = LOCAL_TZ.localize(datetime(2025, 1, 1, 0, 15, 0))
+            end = LOCAL_TZ.localize(datetime(2025, 1, 3, 0, 0, 0))
+            curve = [{'timestamp': start + timedelta(minutes=15 * i), 'value': i} for i in range(0, 192)]
+
+            # Eliminem una seqüència curta amb canvi de dia
+            del curve[95:100]
+            # Eliminem "small_gap" del dia següent
+            del curve[170:176]
+            # Eliminem un parell de punts junts pel mateix dia (Small gap)
+            del curve[10:12]
+            # Eliminem una seqüència llarga (>12 consecutius, Big gap)
+            del curve[40:60]
+
+            qh = PowerProfileQh()
+            qh.load(curve, start, end)
+            gaps = qh.classify_gaps_by_day()
+
+            # Comprovem que els gaps són correctes
+            dia_1 = datetime(2025, 1, 1).date()
+            dia_2 = datetime(2025, 1, 2).date()
+
+            expect(len(gaps[dia_1]["small_gaps"])).to(equal(0))
+            expect(len(gaps[dia_1]["big_gaps"])).to(equal(3))
+
+            expect(len(gaps[dia_2]["small_gaps"])).to(equal(2))
+            expect(len(gaps[dia_2]["big_gaps"])).to(equal(0))
+
+            # Comprovem que les claus tenen tuples amb timestamps
+            expect(gaps[dia_1]["big_gaps"][0][0]).to(be_a(datetime))
+            expect(gaps[dia_2]["small_gaps"][0][0]).to(be_a(datetime))
