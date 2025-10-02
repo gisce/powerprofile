@@ -966,4 +966,9 @@ class PowerProfileQh(PowerProfile):
                     for (start, end) in day_gaps:
                         gaps_dict_by_day[dia]['small_gaps'].append((start, end))
 
+            # Ordenem els gaps dins de cada dia
+            for day, day_gaps in gaps_dict_by_day.items():
+                day_gaps['big_gaps'].sort(key=lambda x: x[0])
+                day_gaps['small_gaps'].sort(key=lambda x: x[0])
+
         return gaps_dict_by_day

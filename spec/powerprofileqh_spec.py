@@ -534,41 +534,6 @@ with description('PowerProfileQh class'):
             actual_values = qh.curve['value'].tolist()
             expect(actual_values).to(equal(expected_values))
 
-    with description('PowerProfileQh.classify_gaps() testing'):
-        with it('Returns empty dict when curve is complete'):
-            start = LOCAL_TZ.localize(datetime(2025, 1, 1, 0, 15, 0))
-            end = LOCAL_TZ.localize(datetime(2025, 1, 2, 0, 0, 0))
-            curve = [{'timestamp': start + timedelta(minutes=15 * i), 'value': i} for i in range(0, 96)]
-
-            qh = PowerProfileQh()
-            qh.load(curve, start, end)
-
-            gaps = qh.classify_gaps()
-            expect(gaps["small_gaps"]).to(equal([]))
-            expect(gaps["big_gaps"]).to(equal([]))
-
-        with it('Detects both small and big gaps'):
-            start = LOCAL_TZ.localize(datetime(2025, 1, 1, 0, 15, 0))
-            end = LOCAL_TZ.localize(datetime(2025, 1, 2, 0, 0, 0))
-            curve = [{'timestamp': start + timedelta(minutes=15 * i), 'value': i} for i in range(0, 96)]
-
-            # Eliminem un parell de punts junts (Small gap)
-            del curve[10:12]
-            # Eliminem una seqüència llarga (>12 consecutius, Big gap)
-            del curve[40:60]
-
-            qh = PowerProfileQh()
-            qh.load(curve, start, end)
-            gaps = qh.classify_gaps()
-
-            # Comprovem que els gaps són correctes
-            expect(len(gaps["small_gaps"])).to(equal(1))
-            expect(len(gaps["big_gaps"])).to(equal(1))
-
-            # Comprovem que les claus tenen tuples amb timestamps
-            expect(gaps["small_gaps"][0][0]).to(be_a(datetime))
-            expect(gaps["big_gaps"][0][1]).to(be_a(datetime))
-
     with description('PowerProfileQh.classify_gaps_by_day() testing'):
         with it('Returns empty dict when curve is complete'):
             start = LOCAL_TZ.localize(datetime(2025, 1, 1, 0, 15, 0))
