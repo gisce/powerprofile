@@ -895,48 +895,80 @@ class PowerProfileQh(PowerProfile):
 
         return new_curve
 
-    def classify_gaps(self):
+    def classify_gaps_by_day(self):
         """
-        Function to check if there are more than 12 consecutive periods missing in a curve
+        Function to help with the implementation of 10.5 PO to complete QH curves
         :return:
-        Dict with 2 lists of tuples ('small_gaps' and 'big_gaps')
+        Dict of datetimes which are a dict of 2 lists of tuples ('small_gaps' and 'big_gaps')
         """
 
         is_complete, curve_gaps = self.get_all_holes()
 
-        gaps_dict = {
-            "small_gaps": [],
-            "big_gaps": []
-        }
-        start_gap = None
-        last_gap = None
-        gap_counter = 0
+        gaps_dict_by_day = {}
 
         if not is_complete:
+            # Agrupem gaps per dia tenint en compte que les 00:00h són del dia anterior
+            gaps_per_day = {}
             for gap in curve_gaps:
-                if last_gap is None:
-                    start_gap = gap
-                    last_gap = gap
-                    gap_counter = 1
-                    continue
+                dia = gap.date()
+                if gap.hour == 0 and gap.minute == 0 and gap.second == 0:
+                    dia = (gap - timedelta(days=1)).date()
+                if dia not in gaps_per_day:
+                    gaps_per_day[dia] = []
+                gaps_per_day[dia].append(gap)
 
-                if gap - last_gap <= timedelta(seconds=900):
-                    last_gap = gap
-                    gap_counter += 1
-                else:
-                    if gap_counter > 12:
-                        gaps_dict["big_gaps"].append((start_gap, last_gap))
+            # Ara processem cada dia independentment
+            for dia in sorted(gaps_per_day.keys()):
+                gaps = sorted(gaps_per_day[dia])
+                start_gap = None
+                last_gap = None
+                gap_counter = 0
+                day_gaps = []
+                day_has_big_gap = False
+
+                for gap in gaps:
+                    if last_gap is None:
+                        start_gap = gap
+                        last_gap = gap
+                        gap_counter = 1
+                        continue
+
+                    if gap - last_gap <= timedelta(seconds=900):
+                        last_gap = gap
+                        gap_counter += 1
                     else:
-                        gaps_dict["small_gaps"].append((start_gap, last_gap))
+                        # Tanquem l'interval actual
+                        if gap_counter > 12:
+                            day_has_big_gap = True
+                        day_gaps.append((start_gap, last_gap))
 
-                    start_gap = gap
-                    last_gap = gap
-                    gap_counter = 1
+                        # Reiniciem per un nou interval
+                        start_gap = gap
+                        last_gap = gap
+                        gap_counter = 1
 
-            if start_gap is not None:
-                if gap_counter > 12:
-                    gaps_dict["big_gaps"].append((start_gap, last_gap))
+                # Tanquem l'últim interval del dia
+                if start_gap is not None:
+                    if gap_counter > 12:
+                        day_has_big_gap = True
+                    day_gaps.append((start_gap, last_gap))
+
+                gaps_dict_by_day[dia] = {
+                    'big_gaps': [],
+                    'small_gaps': []
+                }
+
+                # Si hi ha algun big_gap al dia → tots van a big_gaps
+                if day_has_big_gap:
+                    for (start, end) in day_gaps:
+                        gaps_dict_by_day[dia]['big_gaps'].append((start, end))
                 else:
-                    gaps_dict["small_gaps"].append((start_gap, last_gap))
+                    for (start, end) in day_gaps:
+                        gaps_dict_by_day[dia]['small_gaps'].append((start, end))
 
-        return gaps_dict
+            # Ordenem els gaps dins de cada dia
+            for day, day_gaps in gaps_dict_by_day.items():
+                day_gaps['big_gaps'].sort(key=lambda x: x[0])
+                day_gaps['small_gaps'].sort(key=lambda x: x[0])
+
+        return gaps_dict_by_day
