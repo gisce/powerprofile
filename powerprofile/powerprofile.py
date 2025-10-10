@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from datetime import datetime, timedelta
 from pytz import timezone
+import numpy as np
 import pandas as pd
 import copy
 from .exceptions import *
@@ -55,7 +56,9 @@ class PowerProfile():
         self.curve.sort_values(by=self.datetime_field, inplace=True)
         self.curve.reset_index(inplace=True, drop=True)
         # Ensure timestamp field is localized
-        self.curve[self.datetime_field] = self.curve.apply(lambda row: self.ensure_localized_dt(row), axis=1)
+        dt_series = self.curve[self.datetime_field]
+        if dt_series.dt.tz is None:
+            self.curve[self.datetime_field] = dt_series.dt.tz_localize(TIMEZONE)
 
         if start:
             self.start = start
@@ -337,15 +340,9 @@ class PowerProfile():
         :param sufix: postfix of new fields 'bal' as default
         :return:
         """
-        def balance(pos, neg):
-            res = pos - neg
-            if res > 0.0:
-                return res
-            else:
-                return 0.0
-
-        self.curve[magn1 + sufix] = self.curve.apply(lambda row: balance(row[magn1], row[magn2]), axis=1)
-        self.curve[magn2 + sufix] = self.curve.apply(lambda row: balance(row[magn2], row[magn1]), axis=1)
+        diff = self.curve[magn1] - self.curve[magn2]
+        self.curve[magn1 + sufix] = np.maximum(diff, 0.0)
+        self.curve[magn2 + sufix] = np.maximum(-diff, 0.0)
 
     def ApplyLbtLosses(self, trafo, losses, sufix='_fix'):
         """
@@ -355,14 +352,11 @@ class PowerProfile():
         :param sufix: str (magn where to apply losses, usually '_fix')
         :return:
         """
-        def elevate(kva, losses, value):
-            return round(value * (1 + losses), 2) + round(10 * kva, 2)
+        # Elevate AI
+        self.curve['ai' + sufix] = (self.curve['ai' + sufix] * (1 + losses)).round(2) + round(10 * trafo, 2)
 
-        def descend(losses, value):
-            return round(value * (1 - losses), 2)
-
-        self.curve['ai' + sufix] = self.curve.apply(lambda row: elevate(trafo, losses, row['ai' + sufix]), axis=1)
-        self.curve['ae' + sufix] = self.curve.apply(lambda row: descend(losses, row['ae' + sufix]), axis=1)
+        # Descend AE
+        self.curve['ae' + sufix] = (self.curve['ae' + sufix] * (1 - losses)).round(2)
 
     def drag(self, magns, drag_key=None):
         """
@@ -373,13 +367,21 @@ class PowerProfile():
         """
         for magn in magns:
             draggers = Dragger()
+
+            denom = 1000.0 / self.curve[magn].fillna(1)
+
+            # Normalize
+            norm_values = self.curve[magn] / denom
+            norm_values = norm_values.round(6)
+
             # Dragg field is specified and exists in curve
             if drag_key is not None and drag_key in self.curve:
-                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / (1000 / row.get('magn', 1)), 6),
-                                                                              key=row[drag_key]), axis=1)
+                self.curve[magn] = [draggers.drag(val, key) for val, key in zip(norm_values, self.curve[drag_key])]
             else:
-                self.curve[magn] = self.curve.apply(lambda row: draggers.drag(round(row[magn] / (1000 / row.get('magn', 1)), 6)), axis=1)
-            self.curve[magn] = self.curve.apply(lambda row: row[magn] * (1000 / row.get('magn', 1)), axis=1)
+                self.curve[magn] = [draggers.drag(val) for val in norm_values]
+
+            # Undo normalize
+            self.curve[magn] = self.curve[magn] * denom
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """
@@ -394,7 +396,7 @@ class PowerProfile():
         :param sufix: postfix of new fields 'ac' as default
         :return:
         """
-        self.curve[magn1 + sufix] = self.curve.apply(lambda row: min(row[magn1], row[magn2]), axis=1)
+        self.curve[magn1 + sufix] = self.curve[[magn1, magn2]].min(axis=1)
 
     # Operators
     def check_data_fields(self, right):
@@ -689,9 +691,7 @@ class PowerProfile():
         :return: new profile
         """
         df = self.curve.copy()
-        df['dst'] = df.apply(
-            lambda row: True if TIMEZONE.normalize(row[self.datetime_field]).dst() else False, axis=1
-        )
+        df['dst'] = df[self.datetime_field].dt.dst() != pd.Timedelta(0)
         df = df[df['dst'] == dst]
 
         res = self.__class__(datetime_field=self.datetime_field)
