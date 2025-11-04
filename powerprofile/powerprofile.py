@@ -45,23 +45,13 @@ class PowerProfile():
         if end and not isinstance(end, datetime):
             raise TypeError("ERROR: [end] must be a localized datetime")
 
-        if data and not data[0].get(self.datetime_field, False):
-            raise TypeError("ERROR: No timestamp field. Use datetime_field option to set curve datetime field")
-
-        if start:
-            self.start = start
-        else:
-            self.start = self.curve[self.datetime_field].min()
-
-        if end:
-            self.end = end
-        else:
-            self.end = self.curve[self.datetime_field].max()
-
         if datetime_field is not None:
             self.datetime_field = datetime_field
 
         if data:
+            if not data[0].get(self.datetime_field, False):
+                raise TypeError("ERROR: No timestamp field. Use datetime_field option to set curve datetime field")
+
             self.curve = pd.DataFrame(data)
             self.curve.sort_values(by=self.datetime_field, inplace=True)
             self.curve.reset_index(inplace=True, drop=True)
@@ -80,7 +70,17 @@ class PowerProfile():
                         auto_data_fields.append(field)
                 self.data_fields = auto_data_fields
         else:
-            self.curve = pd.DataFrame([{}])
+            self.curve = pd.DataFrame(columns=[self.datetime_field] + self.data_fields)
+
+        if start:
+            self.start = start
+        else:
+            self.start = self.curve[self.datetime_field].min()
+
+        if end:
+            self.end = end
+        else:
+            self.end = self.curve[self.datetime_field].max()
 
 
     def fill(self, default_data, start, end):
