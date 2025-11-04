@@ -66,7 +66,9 @@ class PowerProfile():
             self.curve.sort_values(by=self.datetime_field, inplace=True)
             self.curve.reset_index(inplace=True, drop=True)
             # Ensure timestamp field is localized
-            self.curve[self.datetime_field] = self.curve.apply(lambda row: self.ensure_localized_dt(row), axis=1)
+            dt_series = self.curve[self.datetime_field]
+            if dt_series.dt.tz is None:
+                self.curve[self.datetime_field] = dt_series.dt.tz_localize(TIMEZONE)
 
             if data_fields is not None:
                 self.data_fields = data_fields
