@@ -45,17 +45,8 @@ class PowerProfile():
         if end and not isinstance(end, datetime):
             raise TypeError("ERROR: [end] must be a localized datetime")
 
-        if datetime_field is not None:
-            self.datetime_field = datetime_field
-
         if data and not data[0].get(self.datetime_field, False):
             raise TypeError("ERROR: No timestamp field. Use datetime_field option to set curve datetime field")
-
-        self.curve = pd.DataFrame(data)
-        self.curve.sort_values(by=self.datetime_field, inplace=True)
-        self.curve.reset_index(inplace=True, drop=True)
-        # Ensure timestamp field is localized
-        self.curve[self.datetime_field] = self.curve.apply(lambda row: self.ensure_localized_dt(row), axis=1)
 
         if start:
             self.start = start
@@ -67,15 +58,28 @@ class PowerProfile():
         else:
             self.end = self.curve[self.datetime_field].max()
 
-        if data_fields is not None:
-            self.data_fields = data_fields
+        if datetime_field is not None:
+            self.datetime_field = datetime_field
+
+        if data:
+            self.curve = pd.DataFrame(data)
+            self.curve.sort_values(by=self.datetime_field, inplace=True)
+            self.curve.reset_index(inplace=True, drop=True)
+            # Ensure timestamp field is localized
+            self.curve[self.datetime_field] = self.curve.apply(lambda row: self.ensure_localized_dt(row), axis=1)
+
+            if data_fields is not None:
+                self.data_fields = data_fields
+            else:
+                auto_data_fields = []
+                loaded_data_fields = data[0].keys()
+                for field in DEFAULT_DATA_FIELDS:
+                    if field in loaded_data_fields and field in self.data_fields:
+                        auto_data_fields.append(field)
+                self.data_fields = auto_data_fields
         else:
-            auto_data_fields = []
-            loaded_data_fields = data[0].keys()
-            for field in DEFAULT_DATA_FIELDS:
-                if field in loaded_data_fields and field in self.data_fields:
-                    auto_data_fields.append(field)
-            self.data_fields = auto_data_fields
+            self.curve = pd.DataFrame([{}])
+
 
     def fill(self, default_data, start, end):
         '''
@@ -130,11 +134,18 @@ class PowerProfile():
 
     @property
     def hours(self):
-        return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 3600))
+        if self.curve.empty:
+            return 0
+        else:
+            return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 3600))
 
     @property
     def quart_hours(self):
-        return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 900))
+        if self.curve.empty:
+            return 0
+        else:
+            return int(self.curve.count()[self.datetime_field] / (self.SAMPLING_INTERVAL / 900))
+
 
     @property
     def unique_samples(self):
@@ -161,7 +172,11 @@ class PowerProfile():
             end = TIMEZONE.localize(self.end)
 
         samples = ((end - start).total_seconds() + self.SAMPLING_INTERVAL) / self.SAMPLING_INTERVAL
-        if counter != samples or counter != self.unique_samples:
+        if counter == 0:
+            dt = start
+            df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
+            return False, sorted(list(df_hours))
+        elif counter != samples or counter != self.unique_samples:
             ids = set(self.curve[self.datetime_field])
             dt = start
             df_hours = set([TIMEZONE.normalize(dt + timedelta(seconds=x * self.SAMPLING_INTERVAL)) for x in range(0, int(samples))])
