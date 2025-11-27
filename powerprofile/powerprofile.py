@@ -383,10 +383,12 @@ class PowerProfile():
         for magn in magns:
             draggers = Dragger()
 
-            denom = 1000.0 / self.curve[magn].fillna(1)
+            values = self.curve[magn].fillna(0.0).astype(float)
+
+            denom = np.where(values != 0.0, 1000.0 / values, 1.0)
 
             # Normalize
-            norm_values = self.curve[magn] / denom
+            norm_values = values / denom
             norm_values = norm_values.round(6)
 
             # Dragg field is specified and exists in curve
