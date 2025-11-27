@@ -383,22 +383,16 @@ class PowerProfile():
         for magn in magns:
             draggers = Dragger()
 
-            values = self.curve[magn].fillna(0.0).astype(float)
-
-            denom = np.where(values != 0.0, 1000.0 / values, 1.0)
-
-            # Normalize
-            norm_values = values / denom
-            norm_values = norm_values.round(6)
+            values = self.curve[magn].fillna(0.0).astype(float).round(6)
 
             # Dragg field is specified and exists in curve
             if drag_key is not None and drag_key in self.curve:
-                self.curve[magn] = [draggers.drag(val, key) for val, key in zip(norm_values, self.curve[drag_key])]
+                self.curve[magn] = [draggers.drag(val, key) for val, key in zip(values, self.curve[drag_key])]
             else:
-                self.curve[magn] = [draggers.drag(val) for val in norm_values]
+                self.curve[magn] = [draggers.drag(val) for val in values]
 
             # Undo normalize
-            self.curve[magn] = self.curve[magn] * denom
+            self.curve[magn] = self.curve[magn].astype(int)
 
     def Min(self, magn1='ae', magn2='ai', sufix='ac'):
         """

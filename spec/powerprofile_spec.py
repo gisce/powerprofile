@@ -749,7 +749,7 @@ with description('PowerProfile Manipulation'):
                     assert abs(round(row['ae_fix'], 1) - round((row['ae'] * (1 - losses)), 1)) <= 1000.0
 
         with context('Dragg'):
-            with it('performs a dragging operation through float values of specified magnitudes on curve'):
+            with it('performs a dragging operation through float values of specified magnitudes'):
                 data_path = './spec/data/'
                 with open(data_path + 'demo_ac_curve.json') as fp:
                     curve_all = json.load(fp, object_hook=datetime_parser)
@@ -763,9 +763,39 @@ with description('PowerProfile Manipulation'):
                 dragged_ai_sum = powpro.curve['ai'].sum()
                 dragged_ae_sum = powpro.curve['ae'].sum()
 
-                # Max error allower is 1000 Wh (1 kWh)
-                assert abs(real_ai_sum - dragged_ai_sum) <= 1000.0
-                assert abs(real_ae_sum - dragged_ae_sum) <= 1000.0
+                # Max error allower is 1 kWh
+                assert abs(real_ai_sum - dragged_ai_sum) <= 1
+                assert abs(real_ae_sum - dragged_ae_sum) <= 1
+
+            with it('performs a dragging operation through float values of specified magnitudes using period as key'):
+                data_path = './spec/data/'
+                with open(data_path + 'demo_ac_curve.json') as fp:
+                    curve_all = json.load(fp, object_hook=datetime_parser)
+
+                # Fill period field randomly
+                for p in curve_all['curve']:
+                    rand = random.randint(1, 3)
+                    period = 'P{}'.format(rand)
+                    p.update({'period': period})
+
+                powpro = PowerProfile()
+                powpro.load(curve_all['curve'], datetime_field='timestamp')
+                real_ai_sum_p1 = powpro.curve[powpro.curve['period'] == 'P1']['ai'].sum()
+                real_ai_sum_p2 = powpro.curve[powpro.curve['period'] == 'P2']['ai'].sum()
+                real_ae_sum_p1 = powpro.curve[powpro.curve['period'] == 'P1']['ae'].sum()
+                real_ae_sum_p2 = powpro.curve[powpro.curve['period'] == 'P2']['ae'].sum()
+
+                powpro.drag(['ai', 'ae'], drag_key='period')
+                dragged_ai_sum_p1 = powpro.curve[powpro.curve['period'] == 'P1']['ai'].sum()
+                dragged_ai_sum_p2 = powpro.curve[powpro.curve['period'] == 'P2']['ai'].sum()
+                dragged_ae_sum_p1 = powpro.curve[powpro.curve['period'] == 'P1']['ae'].sum()
+                dragged_ae_sum_p2 = powpro.curve[powpro.curve['period'] == 'P2']['ae'].sum()
+
+                # Max error allower is 1 kWh
+                assert abs(real_ai_sum_p1 - dragged_ai_sum_p1) <= 1
+                assert abs(real_ae_sum_p2 - dragged_ae_sum_p2) <= 1
+                assert abs(real_ae_sum_p1 - dragged_ae_sum_p1) <= 1
+                assert abs(real_ae_sum_p2 - dragged_ae_sum_p2) <= 1
 
         with context('min'):
             with it('performs a min operation through float values of specified magnitude on curve'):
