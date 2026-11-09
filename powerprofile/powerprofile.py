@@ -748,7 +748,7 @@ class PowerProfile():
             return self
         else:
             last_hour = TIMEZONE.normalize(first_gap - timedelta(seconds=self.SAMPLING_INTERVAL))
-            if last_hour.hour > 0:
+            if last_hour.hour == 0 and last_hour.minute > 0 or last_hour.hour > 0:
                 last_hour = last_hour.replace(hour=0, minute=0)
             if last_hour >= self.start:
                 data = self.curve[self.curve[self.datetime_field] <= last_hour]

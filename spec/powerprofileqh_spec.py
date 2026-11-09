@@ -458,6 +458,10 @@ with description('PowerProfileQh class'):
 
                 self.powpro_subcurve_testing3 = PowerProfileQh()
 
+                self.powpro_subcurve_testing4 = PowerProfileQh()
+
+                self.powpro_subcurve_testing5 = PowerProfileQh()
+
             with it('returns first complete part of curve if there are gaps'):
                 curve = copy(self.curve_subcurve_testing)
                 del curve[-1]
@@ -480,6 +484,33 @@ with description('PowerProfileQh class'):
                 self.powpro_subcurve_testing3.load(curve, self.start, self.end)
                 pp = self.powpro_subcurve_testing3.get_complete_daily_subcurve()
                 expect((pp.curve)).to(equal(None))
+
+            with it('returns first complete part of curve if last hour is lost'):
+                curve = copy(self.curve_subcurve_testing)
+                del curve[-1]
+                self.powpro_subcurve_testing4.load(curve, self.start, self.end)
+                pp = self.powpro_subcurve_testing4.get_complete_daily_subcurve()
+                expect(pp.curve['timestamp'].max()).to(equal(self.curve_subcurve_testing[95]['timestamp']))
+
+            with it('returns first complete part of curve if last hour is lost when using UTC datetime'):
+                self.data_path = './spec/data/'
+                curve = pd.read_csv(self.data_path + 'curve_mcil345qh.csv').to_dict('records')
+                curve = [c for c in curve if c['local_datetime'] <= '2026-10-03 00:15:00']
+
+                for c in curve:
+                    c['utc_datetime'] = UTC_TZ.localize(datetime.strptime(c['utc_datetime'], '%Y-%m-%d %H:%M:%S'))
+                    c['local_datetime'] = c['utc_datetime'].astimezone(LOCAL_TZ)
+
+                curve_start_date_localized = LOCAL_TZ.localize(
+                        datetime.strptime('2026-10-01 00:15:00', '%Y-%m-%d %H:%M:%S')
+                )
+                curve_end_date_localized = LOCAL_TZ.localize(
+                        datetime.strptime('2026-11-01 00:00:00', '%Y-%m-%d %H:%M:%S')
+                )
+                self.powpro_subcurve_testing5.load(curve, curve_start_date_localized, curve_end_date_localized,
+                                                   datetime_field = 'utc_datetime')
+                pp = self.powpro_subcurve_testing5.get_complete_daily_subcurve()
+                expect(pp.curve['local_datetime'].max()).to(equal(curve[191]['local_datetime']))
 
     with description('PowerProfile.to_qh lineal method') as self:
         with before.each:
