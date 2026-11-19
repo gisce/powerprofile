@@ -2,7 +2,7 @@
 
 ![Build Status](https://github.com/gisce/powerprofile/actions/workflows/python2.7-app.yml/badge.svg)
 
-![Build Status](https://github.com/gisce/powerprofile/actions/workflows/python3.11-app.yml/badge.svg)
+![Build Status](https://github.com/gisce/powerprofile/actions/workflows/python3.13-app.yml/badge.svg)
 
 Electric Power Curve and Profiles library
 
