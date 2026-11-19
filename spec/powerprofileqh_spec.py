@@ -334,7 +334,9 @@ with description('PowerProfileQh class'):
                     df = pd.DataFrame(self.curve_all['curve'])
                     df['local_datetime'] = pd.to_datetime(df['local_datetime'])
                     df = df.set_index('local_datetime')
-                    df_qh = df.resample('15T').interpolate(method='linear')
+                    df_qh = df.resample('15min').asfreq().infer_objects()
+                    cols = df_qh.select_dtypes(include='number').columns
+                    df_qh[cols] = df_qh[cols].interpolate(method='linear')
                     curve_quarter_hour = df_qh.reset_index().to_dict(
                         orient='records')
                     self.curve_all['curve'] = curve_quarter_hour
