@@ -898,7 +898,7 @@ class PowerProfileQh(PowerProfile):
 
         new_curve = PowerProfile()
 
-        new_curve.curve = self.curve.resample('1H', closed='right', label='right', on=self.datetime_field).sum()
+        new_curve.curve = self.curve.resample('1h', closed='right', label='right', on=self.datetime_field).sum()
         new_curve.curve.sort_values(by=new_curve.datetime_field, inplace=True)
         new_curve.curve = new_curve.curve.reset_index()
         new_curve.start = new_curve.curve[new_curve.datetime_field].min()
